@@ -100,7 +100,7 @@ fun App(databaseDriverFactory: DatabaseDriverFactory) {
                                     is Screen.DisciplinasHorarios -> DisciplinasHorariosScreen(navController = navController, repository = repository)
                                     is Screen.Productos -> ProductosScreen(navController = navController)
                                     is Screen.EventosPromociones -> EventosPromocionesScreen(navController = navController)
-                                    is Screen.Settings -> SettingsScreen(navController = navController)
+                                    is Screen.Settings -> SettingsScreen(navController = navController, repository = repository)
                                     else -> {}
                                 }
                             }

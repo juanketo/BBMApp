@@ -4,7 +4,9 @@ import org.example.appbbmges.AdministrativeEntity
 import org.example.appbbmges.AppDatabaseBaby
 import org.example.appbbmges.BoutiqueItemEntity
 import org.example.appbbmges.ClassroomEntity
-import org.example.appbbmges.DisciplineEntity
+import org.example.appbbmges.DisciplineSelectAll
+import org.example.appbbmges.DisciplineSelectByBaseName
+import org.example.appbbmges.DisciplineSelectById
 import org.example.appbbmges.EventEntity
 import org.example.appbbmges.FranchiseBoutiqueInventoryEntity
 import org.example.appbbmges.FranchiseDisciplineEntity
@@ -24,6 +26,7 @@ import org.example.appbbmges.TeacherReportEntity
 import org.example.appbbmges.TrialClassEntity
 import org.example.appbbmges.UserEntity
 import org.example.appbbmges.FranchiseeEntity
+import org.example.appbbmges.LevelEntity
 
 class Repository(private val database: AppDatabaseBaby) {
 
@@ -44,7 +47,7 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.selectUserById(id).executeAsOneOrNull()
     }
 
-    fun updateUser(id: Long, newUsername: String, newPassword: String) { // Solo username y password en el esquema
+    fun updateUser(id: Long, newUsername: String, newPassword: String) {
         database.expensesDbQueries.updateUser(newUsername, newPassword, id)
     }
 
@@ -54,29 +57,6 @@ class Repository(private val database: AppDatabaseBaby) {
 
     fun getUserCount(): Long {
         return database.expensesDbQueries.countUsers().executeAsOne()
-    }
-
-    fun initializeData() {
-        val existingRoles = getRoleCount()
-        if (existingRoles == 0L) {
-            insertRole("Superadministrador", "Usuario con permisos completos para gestionar el sistema, franquicias, usuarios, y reportes globales.")
-            insertRole("Director Franquiciatario", "Usuario que gestiona una franquicia: docentes, alumnos, pagos, boutique, snacks, y reportes locales.")
-            insertRole("Coordinadora Administrativa", "Usuario encargado de pagos, boutique, snacks, y reportes administrativos dentro de la franquicia.")
-            insertRole("Coordinadora Académica", "Usuario encargado de docentes, alumnos, horarios, clases muestra, y gestión académica en la franquicia.")
-            insertRole("Gerente Operativo", "Usuario con permisos similares al Director Franquiciatario, actúa como suplente en su ausencia.")
-            insertRole("Marketing", "Usuario encargado de crear, validar y eliminar eventos especiales y promociones.")
-            insertRole("Subdirección Académica", "Usuario corporativo que gestiona eventos, docentes y soporte académico a nivel global.")
-        }
-
-        val existingUsers = getUserCount()
-        if (existingUsers == 0L) {
-            insertUser(
-                username = "Admin",
-                password = "Admin123$",
-                roleId = 2,
-                franchiseId = 2
-            )
-        }
     }
 
     // --- RoleEntity ---
@@ -145,21 +125,58 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.franchiseCount().executeAsOne()
     }
 
-    // --- DisciplineEntity ---
-    fun insertDiscipline(name: String, levels: Long) {
-        database.expensesDbQueries.disciplineCreate(name, levels)
+    // --- LevelEntity ---
+    fun insertLevel(name: String) {
+        database.expensesDbQueries.levelCreate(name)
     }
 
-    fun getAllDisciplines(): List<DisciplineEntity> {
+    fun getAllLevels(): List<LevelEntity> {
+        return database.expensesDbQueries.levelSelectAll().executeAsList()
+    }
+
+    fun getLevelById(id: Long): LevelEntity? {
+        return database.expensesDbQueries.levelSelectById(id).executeAsOneOrNull()
+    }
+
+    fun updateLevel(id: Long, name: String) {
+        database.expensesDbQueries.levelUpdate(name, id)
+    }
+
+    fun deleteLevel(id: Long) {
+        database.expensesDbQueries.levelDelete(id)
+    }
+
+    fun getLevelCount(): Long {
+        return database.expensesDbQueries.levelCount().executeAsOne()
+    }
+
+    // --- DisciplineEntity ---
+    fun insertDiscipline(name: String, levelId: Long) {
+        database.expensesDbQueries.disciplineCreate(name, levelId)
+    }
+
+    fun insertDisciplineWithLevels(baseName: String, levelIds: List<Long>) {
+        levelIds.forEach { levelId ->
+            val level = getLevelById(levelId) ?: return@forEach
+            val disciplineName = "$baseName ${level.name}".trim()
+            insertDiscipline(disciplineName, levelId)
+        }
+    }
+
+    fun getAllDisciplines(): List<DisciplineSelectAll> {
         return database.expensesDbQueries.disciplineSelectAll().executeAsList()
     }
 
-    fun getDisciplineById(id: Long): DisciplineEntity? {
+    fun getDisciplineById(id: Long): DisciplineSelectById? {
         return database.expensesDbQueries.disciplineSelectById(id).executeAsOneOrNull()
     }
 
-    fun updateDiscipline(id: Long, name: String, levels: Long) {
-        database.expensesDbQueries.disciplineUpdate(name, levels, id)
+    fun getDisciplinesByBaseName(baseName: String): List<DisciplineSelectByBaseName> {
+        return database.expensesDbQueries.disciplineSelectByBaseName("$baseName%").executeAsList()
+    }
+
+    fun updateDiscipline(id: Long, name: String, levelId: Long) {
+        database.expensesDbQueries.disciplineUpdate(name, levelId, id)
     }
 
     fun deleteDiscipline(id: Long) {
@@ -820,5 +837,18 @@ class Repository(private val database: AppDatabaseBaby) {
 
     fun getTeacherReportCount(): Long {
         return database.expensesDbQueries.teacherReportCount().executeAsOne()
+    }
+
+    // --- Initialize Data ---
+    fun initializeData() {
+        val existingUsers = getUserCount()
+        if (existingUsers == 0L) {
+            insertUser(
+                username = "Adminpresi12",
+                password = "Adminpresi12",
+                roleId = 1,
+                franchiseId = 1
+            )
+        }
     }
 }

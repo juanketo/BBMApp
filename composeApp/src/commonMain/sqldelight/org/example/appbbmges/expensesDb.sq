@@ -1,4 +1,3 @@
-
 -- expensesDb.sq
 
 -- RoleEntity
@@ -107,26 +106,65 @@ DELETE FROM FranchiseEntity WHERE id = ?;
 franchiseCount:
 SELECT COUNT(*) FROM FranchiseEntity;
 
+-- LevelEntity
+CREATE TABLE LevelEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL
+);
+
+levelCreate:
+INSERT INTO LevelEntity (name)
+VALUES (?);
+
+levelSelectAll:
+SELECT * FROM LevelEntity;
+
+levelSelectById:
+SELECT * FROM LevelEntity WHERE id = ?;
+
+levelUpdate:
+UPDATE LevelEntity
+SET name = ?
+WHERE id = ?;
+
+levelDelete:
+DELETE FROM LevelEntity WHERE id = ?;
+
+levelCount:
+SELECT COUNT(*) FROM LevelEntity;
+
 -- DisciplineEntity
 CREATE TABLE DisciplineEntity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    levels INTEGER NOT NULL
+    level_id INTEGER NOT NULL,
+    FOREIGN KEY(level_id) REFERENCES LevelEntity(id)
 );
 
 disciplineCreate:
-INSERT INTO DisciplineEntity (name, levels)
+INSERT INTO DisciplineEntity (name, level_id)
 VALUES (?, ?);
 
 disciplineSelectAll:
-SELECT * FROM DisciplineEntity;
+SELECT d.id, d.name, d.level_id, l.name AS level_name
+FROM DisciplineEntity d
+JOIN LevelEntity l ON d.level_id = l.id;
 
 disciplineSelectById:
-SELECT * FROM DisciplineEntity WHERE id = ?;
+SELECT d.id, d.name, d.level_id, l.name AS level_name
+FROM DisciplineEntity d
+JOIN LevelEntity l ON d.level_id = l.id
+WHERE d.id = ?;
+
+disciplineSelectByBaseName:
+SELECT d.id, d.name, d.level_id, l.name AS level_name
+FROM DisciplineEntity d
+JOIN LevelEntity l ON d.level_id = l.id
+WHERE d.name LIKE ? || '%';
 
 disciplineUpdate:
 UPDATE DisciplineEntity
-SET name = ?, levels = ?
+SET name = ?, level_id = ?
 WHERE id = ?;
 
 disciplineDelete:
@@ -240,7 +278,7 @@ DELETE FROM TeacherEntity WHERE id = ?;
 teacherCount:
 SELECT COUNT(*) FROM TeacherEntity;
 
--- FranchiseeEntity (NUEVA TABLA)
+-- FranchiseeEntity
 CREATE TABLE FranchiseeEntity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     franchise_id INTEGER NOT NULL,

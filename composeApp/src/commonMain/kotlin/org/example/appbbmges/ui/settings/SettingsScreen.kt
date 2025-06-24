@@ -1,7 +1,6 @@
 package org.example.appbbmges.ui.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,179 +19,197 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.example.appbbmges.navigation.SimpleNavController
+import org.example.appbbmges.data.Repository
+import org.example.appbbmges.ui.settings.registationex.AddNewDisciplinaScreen
+import org.example.appbbmges.ui.settings.registationex.AddNewPromoScreen
+import org.example.appbbmges.ui.settings.registationex.AddNivelScreen
+import org.example.appbbmges.ui.settings.registationex.AddProductoScreen
+import org.example.appbbmges.ui.settings.registationex.AddSucursalScreen
+
+
 
 @Composable
-fun SettingsScreen(navController: SimpleNavController) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF8F8F8))
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState())
+fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
+
+    var selectedFormType by remember { mutableStateOf<String?>(null) }
+
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        // Header
-        Text(
-            text = "Configuración",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF333333),
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Fila 1
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Box(modifier = Modifier.weight(1f)) {
-                    ConfigurationCard(
-                        icon = Icons.Outlined.Business,
-                        title = "Agregar Nueva Sucursal",
-                        backgroundColor = Color(0xFFFFCDD2), // Rosa claro
-                        iconColor = Color(0xFFD32F2F)
-                    ) {
-                        // Acción para agregar sucursal
-                    }
+
+        if (selectedFormType != null) {
+            when (selectedFormType) {
+                "Sucursal" -> {
+                    AddSucursalScreen(
+                    onDismiss = { selectedFormType = null },
+                    repository = repository
+                    )
+                }
+                "Nivel" -> {
+                    AddNivelScreen(
+                    onDismiss = { selectedFormType = null },
+                    repository = repository
+                    )
+                }
+                "Producto" -> {
+                    AddProductoScreen(
+                    onDismiss = { selectedFormType = null },
+                    repository = repository
+                    )
+                }
+                "Disciplina" -> {
+                    AddNewDisciplinaScreen(
+                    onDismiss = { selectedFormType = null },
+                    repository = repository
+                    )
+                }
+                "Promocion" -> {
+                    AddNewPromoScreen(
+                    onDismiss = { selectedFormType = null },
+                    repository = repository
+                    )
                 }
 
-                Box(modifier = Modifier.weight(1f)) {
-                    ConfigurationCard(
-                        icon = Icons.Outlined.School,
-                        title = "Agregar Nuevo Nivel",
-                        backgroundColor = Color(0xFFFFE0B2), // Naranja claro
-                        iconColor = Color(0xFFFF9800)
-                    ) {
-                        // Acción para agregar nivel
-                    }
-                }
             }
-
-            // Fila 2
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+        } else {
+            // Contenido principal del SettingsScreen
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF8F8F8))
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-                Box(modifier = Modifier.weight(1f)) {
-                    ConfigurationCard(
-                        icon = Icons.Outlined.Inventory,
-                        title = "Agregar Nuevo Producto",
-                        backgroundColor = Color(0xFFC8E6C9), // Verde claro
-                        iconColor = Color(0xFF4CAF50)
-                    ) {
-                        // Acción para agregar producto
-                    }
-                }
-
-                Box(modifier = Modifier.weight(1f)) {
-                    ConfigurationCard(
-                        icon = Icons.Outlined.SportsGymnastics,
-                        title = "Agregar Nueva Disciplina",
-                        backgroundColor = Color(0xFFDCEDC8), // Verde menta claro
-                        iconColor = Color(0xFF8BC34A)
-                    ) {
-                        // Acción para agregar disciplina
-                    }
-                }
-            }
-
-            // Fila 3
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Box(modifier = Modifier.weight(1f)) {
-                    ConfigurationCard(
-                        icon = Icons.Outlined.LocalOffer,
-                        title = "Agregar Nueva Promoción",
-                        backgroundColor = Color(0xFFBBDEFB), // Azul claro
-                        iconColor = Color(0xFF2196F3)
-                    ) {
-                        // Acción para agregar promoción
-                    }
-                }
-
-                Box(modifier = Modifier.weight(1f)) {
-                    ConfigurationCard(
-                        icon = Icons.Outlined.PersonAdd,
-                        title = "Agregar Nuevo Usuario",
-                        backgroundColor = Color(0xFFF3E5F5), // Púrpura claro
-                        iconColor = Color(0xFF9C27B0)
-                    ) {
-                        // Acción para agregar usuario
-                    }
-                }
-            }
-
-            // Fila 4
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Box(modifier = Modifier.weight(1f)) {
-                    ConfigurationCard(
-                        icon = Icons.Outlined.Category,
-                        title = "Agregar Nueva Categoría",
-                        backgroundColor = Color(0xFFFFE0E6), // Rosa muy claro
-                        iconColor = Color(0xFFE91E63)
-                    ) {
-                        // Acción para agregar categoría
-                    }
-                }
-
-                Box(modifier = Modifier.weight(1f)) {
-                    ConfigurationCard(
-                        icon = Icons.Outlined.Schedule,
-                        title = "Configurar Horarios",
-                        backgroundColor = Color(0xFFE1F5FE), // Azul cielo claro
-                        iconColor = Color(0xFF03A9F4)
-                    ) {
-                        // Acción para configurar horarios
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Sección adicional de configuraciones generales
-        Text(
-            text = "Configuraciones Generales",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF333333),
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column {
-                GeneralSettingItem(
-                    icon = Icons.Outlined.Backup,
-                    title = "Respaldo de Datos",
-                    subtitle = "Exportar información del sistema"
-                ) {
-                    // Acción de respaldo
-                }
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    thickness = 1.dp,
-                    color = Color(0xFFF0F0F0)
+                // Header
+                Text(
+                    text = "Configuración",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF333333),
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                GeneralSettingItem(
-                    icon = Icons.Outlined.Settings,
-                    title = "Configuración Avanzada",
-                    subtitle = "Ajustes del sistema y preferencias"
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Acción de configuración avanzada
+                    // Fila 1
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            ConfigurationCard(
+                                icon = Icons.Outlined.Business,
+                                title = "Agregar Nueva Sucursal",
+                                backgroundColor = Color(0xFFFFCDD2), // Rosa claro
+                                iconColor = Color(0xFFD32F2F)
+                            ) {
+                                selectedFormType = "Sucursal"
+                            }
+                        }
+
+                        Box(modifier = Modifier.weight(1f)) {
+                            ConfigurationCard(
+                                icon = Icons.Outlined.School,
+                                title = "Agregar Nuevo Nivel",
+                                backgroundColor = Color(0xFFFFE0B2), // Naranja claro
+                                iconColor = Color(0xFFFF9800)
+                            ) {
+                                selectedFormType = "Nivel"
+                            }
+                        }
+                    }
+
+                    // Fila 2
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            ConfigurationCard(
+                                icon = Icons.Outlined.Inventory,
+                                title = "Agregar Nuevo Producto",
+                                backgroundColor = Color(0xFFC8E6C9), // Verde claro
+                                iconColor = Color(0xFF4CAF50)
+                            ) {
+                                selectedFormType = "Producto"
+                            }
+                        }
+
+                        Box(modifier = Modifier.weight(1f)) {
+                            ConfigurationCard(
+                                icon = Icons.Outlined.SportsGymnastics,
+                                title = "Agregar Nueva Disciplina",
+                                backgroundColor = Color(0xFFDCEDC8), // Verde menta claro
+                                iconColor = Color(0xFF8BC34A)
+                            ) {
+                                selectedFormType = "Disciplina"
+                            }
+                        }
+                    }
+
+                    // Fila 3
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            ConfigurationCard(
+                                icon = Icons.Outlined.LocalOffer,
+                                title = "Agregar Nueva Promoción",
+                                backgroundColor = Color(0xFFBBDEFB), // Azul claro
+                                iconColor = Color(0xFF2196F3)
+                            ) {
+                                selectedFormType = "Promocion"
+                            }
+                        }
+
+                        // Espacio vacío para mantener el layout
+                        Box(modifier = Modifier.weight(1f)) {
+                            Spacer(modifier = Modifier.height(140.dp))
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Text(
+                    text = "Configuraciones Generales",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF333333),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column {
+                        GeneralSettingItem(
+                            icon = Icons.Outlined.Backup,
+                            title = "Respaldo de Datos",
+                            subtitle = "Exportar información del sistema"
+                        ) {
+                            selectedFormType = "Respaldo"
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            thickness = 1.dp,
+                            color = Color(0xFFF0F0F0)
+                        )
+
+                        GeneralSettingItem(
+                            icon = Icons.Outlined.Settings,
+                            title = "Configuración Avanzada",
+                            subtitle = "Ajustes del sistema y preferencias"
+                        ) {
+                            selectedFormType = "ConfigAvanzada"
+                        }
+                    }
                 }
             }
         }

@@ -56,7 +56,6 @@ enum class StudentFormStep {
     CONFIRMATION
 }
 
-// Función para calcular edad desde una fecha en formato dd/MM/yyyy
 fun calculateAge(birthDateString: String): Double? {
     if (birthDateString.length != 10 || !birthDateString.matches(Regex("\\d{2}/\\d{2}/\\d{4}"))) {
         return null
@@ -109,20 +108,16 @@ fun generateCURP(
     val vowels = "AEIOU"
     val consonants = "BCDFGHJKLMNPQRSTVWXYZ"
 
-    // Primera letra del apellido paterno
     val firstLetter = lastNamePaternal.first().uppercaseChar()
 
-    // Primera vocal interna del apellido paterno
     val firstVowel = lastNamePaternal.drop(1).firstOrNull { it.uppercaseChar() in vowels }?.uppercaseChar() ?: 'X'
 
-    // Primera letra del apellido materno
     val secondLetter = if (lastNameMaternal.isNotEmpty()) {
         lastNameMaternal.first().uppercaseChar()
     } else {
         'X'
     }
 
-    // Primera letra del nombre
     val thirdLetter = firstName.first().uppercaseChar()
 
     // Sexo
@@ -132,29 +127,23 @@ fun generateCURP(
         else -> "H"
     }
 
-    // Estado (por defecto DF para Ciudad de México)
     val state = "DF"
 
-    // Consonante interna del apellido paterno
     val firstConsonant = lastNamePaternal.drop(1).firstOrNull { it.uppercaseChar() in consonants }?.uppercaseChar() ?: 'X'
 
-    // Consonante interna del apellido materno
     val secondConsonant = if (lastNameMaternal.isNotEmpty()) {
         lastNameMaternal.drop(1).firstOrNull { it.uppercaseChar() in consonants }?.uppercaseChar() ?: 'X'
     } else {
         'X'
     }
 
-    // Consonante interna del nombre
     val thirdConsonant = firstName.drop(1).firstOrNull { it.uppercaseChar() in consonants }?.uppercaseChar() ?: 'X'
 
-    // Dígitos aleatorios (simplificados)
     val randomDigits = "01"
 
     return "$firstLetter$firstVowel$secondLetter$thirdLetter$year$month${day}$sexLetter$state$firstConsonant$secondConsonant$thirdConsonant$randomDigits"
 }
 
-// Composable para el DatePickerModal
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerModal(
@@ -183,7 +172,6 @@ fun DatePickerModal(
     }
 }
 
-// Función para formatear fecha en KMP
 fun formatDateFromMillis(millis: Long): String {
     val instant = Instant.fromEpochMilliseconds(millis)
     val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -216,14 +204,11 @@ fun AddAlumnoScreen(
     var chronicDisease by remember { mutableStateOf("") }
     var active by remember { mutableStateOf(true) }
 
-    // Estados para dropdowns
     var genderExpanded by remember { mutableStateOf(false) }
     var nationalityExpanded by remember { mutableStateOf(false) }
 
-    // Estado para DatePicker
     var showDatePicker by remember { mutableStateOf(false) }
 
-    // Opciones para dropdowns
     val genderOptions = listOf("Masculino", "Femenino")
     val nationalityOptions = listOf(
         "Mexicana", "Estadounidense", "Canadiense", "Española", "Francesa",
@@ -231,7 +216,6 @@ fun AddAlumnoScreen(
         "Colombiana", "Peruana", "Chilena", "Venezolana", "Otra"
     )
 
-    // Estados de error
     var franchiseIdError by remember { mutableStateOf<String?>(null) }
     var firstNameError by remember { mutableStateOf<String?>(null) }
     var lastNamePaternalError by remember { mutableStateOf<String?>(null) }
@@ -243,7 +227,6 @@ fun AddAlumnoScreen(
     var addressZipError by remember { mutableStateOf<String?>(null) }
     var formError by remember { mutableStateOf<String?>(null) }
 
-    // Auto-generar CURP cuando cambien los datos necesarios
     LaunchedEffect(firstName, lastNamePaternal, lastNameMaternal, birthDate, gender) {
         if (firstName.isNotEmpty() && lastNamePaternal.isNotEmpty() && birthDate.isNotEmpty() && gender.isNotEmpty()) {
             curp = generateCURP(firstName, lastNamePaternal, lastNameMaternal, birthDate, gender)
@@ -272,7 +255,6 @@ fun AddAlumnoScreen(
             isValid = false
         }
 
-        // Validar apellido paterno
         if (lastNamePaternal.isNotEmpty()) {
             if (lastNamePaternal.length !in 2..50) {
                 lastNamePaternalError = "El apellido paterno debe tener entre 2 y 50 caracteres"
@@ -283,7 +265,6 @@ fun AddAlumnoScreen(
             }
         }
 
-        // Validar apellido materno
         if (lastNameMaternal.isNotEmpty()) {
             if (lastNameMaternal.length !in 2..50) {
                 lastNameMaternalError = "El apellido materno debe tener entre 2 y 50 caracteres"
@@ -294,7 +275,6 @@ fun AddAlumnoScreen(
             }
         }
 
-        // Validar fecha de nacimiento y edad
         if (birthDate.isNotEmpty()) {
             val age = calculateAge(birthDate)
             if (age == null) {
@@ -317,7 +297,6 @@ fun AddAlumnoScreen(
             }
         }
 
-        // Validar email
         if (email.isNotEmpty() && (!email.contains("@") || !email.contains("."))) {
             emailError = "El email no tiene un formato válido"
             isValid = false
@@ -385,7 +364,7 @@ fun AddAlumnoScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                         .fillMaxSize()
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -507,7 +486,7 @@ fun AddAlumnoScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                // Dropdown para Género
+
                                 ExposedDropdownMenuBox(
                                     expanded = genderExpanded,
                                     onExpandedChange = { genderExpanded = !genderExpanded },
@@ -1043,7 +1022,6 @@ fun AddAlumnoScreen(
         }
     }
 
-    // DatePicker Modal
     if (showDatePicker) {
         DatePickerModal(
             onDateSelected = { millis ->
