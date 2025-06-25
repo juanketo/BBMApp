@@ -29,11 +29,12 @@ import appbbmges.composeapp.generated.resources.Res
 import appbbmges.composeapp.generated.resources.logoSystem
 import org.example.appbbmges.data.Repository
 import org.example.appbbmges.ui.usuarios.AppColors
+import org.example.appbbmges.LevelEntity
 import org.jetbrains.compose.resources.painterResource
 
 data class NivelData(
     val new_level: String,
-    val level_number: String?
+    val selectedGrades: Set<Int>
 )
 
 enum class NivelFormStep {
@@ -51,42 +52,64 @@ sealed class NivelFormState {
 data class NivelValidationResult(
     val isValid: Boolean,
     val newLevelError: String? = null,
-    val levelNumberError: String? = null
+    val gradesError: String? = null,
+    val duplicateError: String? = null
 )
 
 class NivelValidator {
     companion object {
-        fun validateNivel(newLevel: String, levelNumber: String?): NivelValidationResult {
+        fun validateNivel(
+            newLevel: String,
+            selectedGrades: Set<Int>,
+            existingLevels: List<LevelEntity>
+        ): NivelValidationResult {
             val newLevelError = when {
                 newLevel.isEmpty() -> "El nombre del nivel es obligatorio"
                 newLevel.length < 4 -> "El nombre del nivel debe tener al menos 4 caracteres"
                 newLevel.length > 50 -> "El nombre del nivel no puede exceder 50 caracteres"
-                newLevel.contains(" ") -> "El nombre del nivel no puede contener espacios"
-                !newLevel.matches(Regex("^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$")) -> "El nombre solo puede contener letras (sin números ni espacios)"
+                !newLevel.matches(Regex("^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9 ]+$")) -> "El nombre solo puede contener letras, números y espacios (sin caracteres especiales)"
                 !newLevel.first().isUpperCase() -> "El nombre debe iniciar con mayúscula"
-                !newLevel.drop(1).all { it.isLowerCase() || it in "áéíóúñ" } -> "Después de la primera letra, solo se permiten minúsculas"
                 else -> null
             }
 
-            val levelNumberError = when {
-                levelNumber != null && levelNumber.toIntOrNull() == null -> "El número de nivel debe ser válido"
-                levelNumber != null && (levelNumber.toIntOrNull() ?: 0) !in 1..10 -> "El número debe estar entre 1 y 10"
-                else -> null
+            // Validación de duplicados para cada combinación
+            val duplicateErrors = mutableListOf<String>()
+
+            // Verificar si el nivel sin grado ya existe
+            if (selectedGrades.isEmpty()) {
+                if (existingLevels.any { it.name.equals(newLevel, ignoreCase = true) }) {
+                    duplicateErrors.add("Ya existe el nivel '$newLevel'")
+                }
+            } else {
+                // Verificar cada grado seleccionado
+                selectedGrades.forEach { grade ->
+                    val levelName = buildLevelName(newLevel, grade)
+                    if (existingLevels.any { it.name.equals(levelName, ignoreCase = true) }) {
+                        duplicateErrors.add("Ya existe '$levelName'")
+                    }
+                }
             }
+
+            val duplicateError = if (duplicateErrors.isNotEmpty()) {
+                duplicateErrors.joinToString(", ")
+            } else null
 
             return NivelValidationResult(
-                isValid = newLevelError == null && levelNumberError == null,
+                isValid = newLevelError == null && duplicateError == null,
                 newLevelError = newLevelError,
-                levelNumberError = levelNumberError
+                duplicateError = duplicateError
             )
         }
     }
 }
 
-fun toRomanNumeral(number: Int?): String {
-    if (number == null || number <= 0) return ""
-    val romanValues = listOf("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
-    return if (number <= romanValues.size) romanValues[number - 1] else number.toString()
+// Función helper para construir el nombre del nivel con grado
+private fun buildLevelName(name: String, grade: Int?): String {
+    return if (grade != null) {
+        "$name Grado $grade"
+    } else {
+        name
+    }.trim()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -101,16 +124,23 @@ fun AddNivelScreen(
     // Estados del formulario
     var currentStep by remember { mutableStateOf(NivelFormStep.FORM) }
     var new_level by remember { mutableStateOf("") }
-    var level_number by remember { mutableStateOf<String?>(null) }
+    var selectedGrades by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var withoutGrade by remember { mutableStateOf(false) }
     var formState by remember { mutableStateOf<NivelFormState>(NivelFormState.Idle) }
     var validationResult by remember { mutableStateOf(NivelValidationResult(true)) }
-    var expanded by remember { mutableStateOf(false) }
 
-    val levelOptions = (1..10).map { it.toString() }
+    // Estado para almacenar los niveles existentes
+    val existingLevels = remember { mutableStateOf<List<LevelEntity>>(emptyList()) }
 
-    // Función de validación
+    // Cargar niveles existentes al inicializar el componente
+    LaunchedEffect(Unit) {
+        existingLevels.value = repository.getAllLevels()
+    }
+
+    // Función de validación actualizada
     fun validateForm(): Boolean {
-        val validation = NivelValidator.validateNivel(new_level, level_number)
+        val gradesToValidate = if (withoutGrade) emptySet() else selectedGrades
+        val validation = NivelValidator.validateNivel(new_level, gradesToValidate, existingLevels.value)
         validationResult = validation
         return validation.isValid
     }
@@ -126,12 +156,20 @@ fun AddNivelScreen(
             NivelFormStep.CONFIRMATION -> {
                 formState = NivelFormState.Loading
                 try {
-                    val levelName = buildLevelName(new_level, level_number)
-                    repository.insertLevel(levelName)
+                    if (withoutGrade) {
+                        // Crear solo el nivel sin grado
+                        repository.insertLevel(new_level)
+                    } else {
+                        // Crear un registro para cada grado seleccionado
+                        selectedGrades.forEach { grade ->
+                            val levelName = buildLevelName(new_level, grade)
+                            repository.insertLevel(levelName)
+                        }
+                    }
                     formState = NivelFormState.Success
                     onDismiss()
                 } catch (e: Exception) {
-                    formState = NivelFormState.Error("Error al registrar el nivel: ${e.message}")
+                    formState = NivelFormState.Error("Error al registrar el(los) nivel(es): ${e.message}")
                 }
             }
         }
@@ -171,24 +209,42 @@ fun AddNivelScreen(
                         NivelFormStep.FORM -> {
                             FormContent(
                                 newLevel = new_level,
-                                levelNumber = level_number,
+                                selectedGrades = selectedGrades,
+                                withoutGrade = withoutGrade,
                                 validationResult = validationResult,
-                                expanded = expanded,
-                                levelOptions = levelOptions,
                                 formState = formState,
                                 onNewLevelChange = {
                                     new_level = it
-                                    if (validationResult.newLevelError != null) {
-                                        validationResult = validationResult.copy(newLevelError = null)
+                                    if (validationResult.newLevelError != null || validationResult.duplicateError != null) {
+                                        validationResult = validationResult.copy(
+                                            newLevelError = null,
+                                            duplicateError = null
+                                        )
                                     }
                                 },
-                                onLevelNumberChange = {
-                                    level_number = it
-                                    if (validationResult.levelNumberError != null) {
-                                        validationResult = validationResult.copy(levelNumberError = null)
+                                onGradeToggle = { grade ->
+                                    selectedGrades = if (selectedGrades.contains(grade)) {
+                                        selectedGrades - grade
+                                    } else {
+                                        selectedGrades + grade
+                                    }
+                                    if (validationResult.duplicateError != null) {
+                                        validationResult = validationResult.copy(
+                                            duplicateError = null
+                                        )
                                     }
                                 },
-                                onExpandedChange = { expanded = it },
+                                onWithoutGradeToggle = {
+                                    withoutGrade = it
+                                    if (it) {
+                                        selectedGrades = emptySet()
+                                    }
+                                    if (validationResult.duplicateError != null) {
+                                        validationResult = validationResult.copy(
+                                            duplicateError = null
+                                        )
+                                    }
+                                },
                                 onProceedToNext = { proceedToNext() },
                                 focusManager = focusManager
                             )
@@ -196,7 +252,8 @@ fun AddNivelScreen(
                         NivelFormStep.CONFIRMATION -> {
                             ConfirmationContent(
                                 newLevel = new_level,
-                                levelNumber = level_number,
+                                selectedGrades = selectedGrades,
+                                withoutGrade = withoutGrade,
                                 formState = formState
                             )
                         }
@@ -215,15 +272,6 @@ fun AddNivelScreen(
             }
         }
     }
-}
-
-// Función helper para construir el nombre del nivel
-private fun buildLevelName(name: String, number: String?): String {
-    return if (number != null) {
-        "$name ${toRomanNumeral(number.toInt())}"
-    } else {
-        name
-    }.trim()
 }
 
 @Composable
@@ -290,25 +338,24 @@ private fun FormHeader(currentStep: NivelFormStep) {
 @Composable
 private fun FormContent(
     newLevel: String,
-    levelNumber: String?,
+    selectedGrades: Set<Int>,
+    withoutGrade: Boolean,
     validationResult: NivelValidationResult,
-    expanded: Boolean,
-    levelOptions: List<String>,
     formState: NivelFormState,
     onNewLevelChange: (String) -> Unit,
-    onLevelNumberChange: (String?) -> Unit,
-    onExpandedChange: (Boolean) -> Unit,
+    onGradeToggle: (Int) -> Unit,
+    onWithoutGradeToggle: (Boolean) -> Unit,
     onProceedToNext: () -> Unit,
     focusManager: androidx.compose.ui.focus.FocusManager
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         OutlinedTextField(
             value = newLevel,
             onValueChange = onNewLevelChange,
             label = { Text("Nombre del Nivel") },
-            placeholder = { Text("Ej: Mini, Baby, Kids") },
+            placeholder = { Text("Ej: Mini, Baby, Primary 1") },
             isError = validationResult.newLevelError != null,
             supportingText = {
                 validationResult.newLevelError?.let {
@@ -327,11 +374,11 @@ private fun FormContent(
             enabled = formState !is NivelFormState.Loading,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Next
+                imeAction = ImeAction.Done
             ),
             keyboardActions = KeyboardActions(
-                onNext = {
-                    focusManager.moveFocus(FocusDirection.Down)
+                onDone = {
+                    focusManager.clearFocus()
                 }
             ),
             colors = OutlinedTextFieldDefaults.colors(
@@ -340,79 +387,135 @@ private fun FormContent(
             )
         )
 
-        Box(
-            modifier = Modifier.fillMaxWidth()
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFFF8F9FA)
+            ),
+            shape = RoundedCornerShape(12.dp)
         ) {
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = onExpandedChange,
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedTextField(
-                    value = levelNumber?.let { "Nivel $it (${toRomanNumeral(it.toInt())})" } ?: "Seleccionar número (opcional)",
-                    onValueChange = {},
-                    label = { Text("Número de Nivel (Opcional)") },
-                    isError = validationResult.levelNumberError != null,
-                    supportingText = {
-                        validationResult.levelNumberError?.let {
-                            Text(
-                                text = it,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
-                        .semantics {
-                            contentDescription = "Campo para seleccionar número de nivel"
-                        },
-                    readOnly = true,
-                    singleLine = true,
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = AppColors.Primary,
-                        focusedLabelColor = AppColors.Primary
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            focusManager.clearFocus()
-                            onProceedToNext()
-                        }
-                    )
+                Text(
+                    text = "Seleccionar Grados",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.TextColor
                 )
 
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { onExpandedChange(false) },
-                    modifier = Modifier
-                        .heightIn(max = 200.dp)
-                        .exposedDropdownSize()
+                // Checkbox para sin grado
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Ninguno", style = MaterialTheme.typography.bodyMedium) },
-                        onClick = {
-                            onLevelNumberChange(null)
-                            onExpandedChange(false)
-                            // Después de seleccionar, el usuario puede presionar Enter para continuar
-                        },
-                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                    )
-                    levelOptions.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text("Nivel $option (${toRomanNumeral(option.toInt())})", style = MaterialTheme.typography.bodyMedium) },
-                            onClick = {
-                                onLevelNumberChange(option)
-                                onExpandedChange(false)
-                                // Después de seleccionar, el usuario puede presionar Enter para continuar
-                            },
-                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                    Checkbox(
+                        checked = withoutGrade,
+                        onCheckedChange = onWithoutGradeToggle,
+                        enabled = formState !is NivelFormState.Loading,
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = AppColors.Primary
                         )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Sin grado específico",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (withoutGrade) AppColors.Primary else AppColors.TextColor
+                    )
+                }
+
+                if (!withoutGrade) {
+                    HorizontalDivider(
+                        color = AppColors.Primary.copy(alpha = 0.2f),
+                        thickness = 1.dp
+                    )
+
+                    Text(
+                        text = "O selecciona uno o más grados específicos:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AppColors.TextColor.copy(alpha = 0.7f)
+                    )
+
+                    // Checkboxes para los grados
+                    (1..3).forEach { grade ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = selectedGrades.contains(grade),
+                                onCheckedChange = { onGradeToggle(grade) },
+                                enabled = formState !is NivelFormState.Loading,
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = AppColors.Primary
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Grado $grade",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (selectedGrades.contains(grade)) AppColors.Primary else AppColors.TextColor
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Mostrar error de duplicado si existe
+        if (validationResult.duplicateError != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = validationResult.duplicateError,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+
+        // Mostrar preview de lo que se va a crear
+        if (newLevel.isNotEmpty() && (withoutGrade || selectedGrades.isNotEmpty())) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = AppColors.Primary.copy(alpha = 0.1f)
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Se crearán los siguientes niveles:",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = AppColors.Primary
+                    )
+
+                    if (withoutGrade) {
+                        Text(
+                            text = "• $newLevel",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = AppColors.Primary
+                        )
+                    } else {
+                        selectedGrades.sorted().forEach { grade ->
+                            Text(
+                                text = "• ${buildLevelName(newLevel, grade)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = AppColors.Primary
+                            )
+                        }
                     }
                 }
             }
@@ -423,7 +526,8 @@ private fun FormContent(
 @Composable
 private fun ConfirmationContent(
     newLevel: String,
-    levelNumber: String?,
+    selectedGrades: Set<Int>,
+    withoutGrade: Boolean,
     formState: NivelFormState
 ) {
     Column(
@@ -438,10 +542,10 @@ private fun ConfirmationContent(
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Confirmar Datos del Nivel",
+                    text = "Confirmar Registro de Niveles",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = AppColors.TextColor
@@ -452,37 +556,36 @@ private fun ConfirmationContent(
                     thickness = 1.dp
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Nombre completo:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = buildLevelName(newLevel, levelNumber),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = AppColors.Primary,
-                        fontWeight = FontWeight.Bold
-                    )
+                val levelsToCreate = if (withoutGrade) {
+                    listOf(newLevel)
+                } else {
+                    selectedGrades.sorted().map { grade -> buildLevelName(newLevel, grade) }
                 }
 
-                if (levelNumber != null) {
+                Text(
+                    text = "Se ${if (levelsToCreate.size > 1) "registrarán" else "registrará"} ${levelsToCreate.size} ${if (levelsToCreate.size > 1) "niveles" else "nivel"}:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = AppColors.TextColor
+                )
+
+                levelsToCreate.forEach { levelName ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Número de nivel:",
+                            text = "•",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            color = AppColors.Primary,
+                            fontWeight = FontWeight.Bold
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "$levelNumber (${toRomanNumeral(levelNumber.toInt())})",
+                            text = levelName,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = AppColors.Primary
+                            color = AppColors.Primary,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

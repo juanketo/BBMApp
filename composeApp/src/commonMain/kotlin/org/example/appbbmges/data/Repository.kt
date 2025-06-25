@@ -839,7 +839,6 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.teacherReportCount().executeAsOne()
     }
 
-    // --- Initialize Data ---
     fun initializeData() {
         val existingUsers = getUserCount()
         if (existingUsers == 0L) {
