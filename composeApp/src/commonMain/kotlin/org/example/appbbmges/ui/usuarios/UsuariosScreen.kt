@@ -1,8 +1,18 @@
 package org.example.appbbmges.ui.usuarios
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,8 +23,32 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -25,7 +59,6 @@ import androidx.compose.ui.unit.dp
 import org.example.appbbmges.data.Repository
 import org.example.appbbmges.navigation.SimpleNavController
 import org.example.appbbmges.ui.usuarios.registation.AddAdministrativoScreen
-
 import org.example.appbbmges.ui.usuarios.registation.AddAlumnoScreen
 import org.example.appbbmges.ui.usuarios.registation.AddFranquiciatarioScreen
 import org.example.appbbmges.ui.usuarios.registation.AddProfesorScreen
@@ -50,6 +83,7 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var userToDelete by remember { mutableStateOf<Pair<Any, String>?>(null) }
     var userToEdit by remember { mutableStateOf<Pair<Any, String>?>(null) }
+    var selectedProfile by remember { mutableStateOf<Pair<Any, String>?>(null) }
 
     val students = remember { mutableStateOf(repository.getAllStudents()) }
     val teachers = remember { mutableStateOf(repository.getAllTeachers()) }
@@ -152,190 +186,124 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (selectedUserType != null) {
-                when (selectedUserType) {
-                    "Alumno" -> AddAlumnoScreen(
-                        onDismiss = {
-                            selectedUserType = null
-                            students.value = repository.getAllStudents()
-                        },
+            when {
+                selectedProfile != null -> {
+                    ProfileScreen(
+                        userPair = selectedProfile!!,
+                        onDismiss = { selectedProfile = null },
                         repository = repository
                     )
-                    "Profesor" -> AddProfesorScreen(
-                        onDismiss = {
-                            selectedUserType = null
-                            teachers.value = repository.getAllTeachers()
-                        },
-                        repository = repository
-                    )
-                    "Franquiciatario" -> AddFranquiciatarioScreen(
-                        onDismiss = {
-                            selectedUserType = null
-                            franchisees.value = repository.getAllFranchisees()
-                        },
-                        repository = repository
-                    )
-                    "Administrativo" -> AddAdministrativoScreen(
-                        onDismiss = {
-                            selectedUserType = null
-                            administratives.value = repository.getAllAdministratives()
-                        },
-                        repository = repository
-                    )
-
                 }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                ) {
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Lista de Usuarios",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = AppColors.Primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it; currentPage = 1 },
-                            placeholder = { Text("Buscar...") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Buscar",
-                                    tint = Color.Gray
-                                )
+                selectedUserType != null -> {
+                    when (selectedUserType) {
+                        "Alumno" -> AddAlumnoScreen(
+                            onDismiss = {
+                                selectedUserType = null
+                                students.value = repository.getAllStudents()
                             },
-                            modifier = Modifier
-                                .width(300.dp)
-                                .height(56.dp),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = AppColors.Primary,
-                                unfocusedBorderColor = Color.Gray,
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                cursorColor = AppColors.Primary
-                            )
+                            repository = repository
+                        )
+                        "Profesor" -> AddProfesorScreen(
+                            onDismiss = {
+                                selectedUserType = null
+                                teachers.value = repository.getAllTeachers()
+                            },
+                            repository = repository
+                        )
+                        "Franquiciatario" -> AddFranquiciatarioScreen(
+                            onDismiss = {
+                                selectedUserType = null
+                                franchisees.value = repository.getAllFranchisees()
+                            },
+                            repository = repository
+                        )
+                        "Administrativo" -> AddAdministrativoScreen(
+                            onDismiss = {
+                                selectedUserType = null
+                                administratives.value = repository.getAllAdministratives()
+                            },
+                            repository = repository
                         )
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    TabRow(
-                        selectedTabIndex = when (selectedTab) {
-                            "Todos" -> 0
-                            "Alumnos" -> 1
-                            "Profesores" -> 2
-                            "Franquiciatarios" -> 3
-                            "Administrativos" -> 4
-                            else -> 0
-                        },
-                        containerColor = Color.White,
-                        contentColor = AppColors.Primary
+                }
+                else -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
                     ) {
-                        listOf("Todos", "Alumnos", "Profesores", "Franquiciatarios", "Administrativos").forEach { tab ->
-                            Tab(
-                                text = { Text(tab) },
-                                selected = selectedTab == tab,
-                                onClick = {
-                                    selectedTab = tab
-                                    currentPage = 1
-                                }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Lista de Usuarios",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = AppColors.Primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it; currentPage = 1 },
+                                placeholder = { Text("Buscar...") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = "Buscar",
+                                        tint = Color.Gray
+                                    )
+                                },
+                                modifier = Modifier
+                                    .width(300.dp)
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AppColors.Primary,
+                                    unfocusedBorderColor = Color.Gray,
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = Color.White,
+                                    cursorColor = AppColors.Primary
+                                )
                             )
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shadowElevation = 4.dp,
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color.White
-                    ) {
-                        LazyColumn {
-                            item {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Checkbox(
-                                        checked = false,
-                                        onCheckedChange = { /* TODO: Seleccionar todos */ },
-                                        modifier = Modifier.width(48.dp)
-                                    )
-                                    Text(
-                                        "TIPO",
-                                        color = Color.Gray,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.weight(1.5f)
-                                    )
-                                    Text(
-                                        "NOMBRE",
-                                        color = Color.Gray,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.weight(2f)
-                                    )
-                                    Text(
-                                        "TELÉFONO",
-                                        color = Color.Gray,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.weight(2f)
-                                    )
-                                    Text(
-                                        "EMAIL",
-                                        color = Color.Gray,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.weight(2f)
-                                    )
-                                    Text(
-                                        "ACTIVO",
-                                        color = Color.Gray,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Spacer(modifier = Modifier.weight(2f))
-                                }
-                                HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
+                        TabRow(
+                            selectedTabIndex = when (selectedTab) {
+                                "Todos" -> 0
+                                "Alumnos" -> 1
+                                "Profesores" -> 2
+                                "Franquiciatarios" -> 3
+                                "Administrativos" -> 4
+                                else -> 0
+                            },
+                            containerColor = Color.White,
+                            contentColor = AppColors.Primary
+                        ) {
+                            listOf("Todos", "Alumnos", "Profesores", "Franquiciatarios", "Administrativos").forEach { tab ->
+                                Tab(
+                                    text = { Text(tab) },
+                                    selected = selectedTab == tab,
+                                    onClick = {
+                                        selectedTab = tab
+                                        currentPage = 1
+                                    }
+                                )
                             }
+                        }
 
-                            items(paginatedUsers) { userPair ->
-                                var isHovered by remember { mutableStateOf(false) }
-                                val (user, type) = userPair
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(
-                                            if (isHovered) Color(0xFFF5F5F5)
-                                            else Color.White
-                                        )
-                                        .pointerInput(Unit) {
-                                            awaitPointerEventScope {
-                                                while (true) {
-                                                    val event = awaitPointerEvent()
-                                                    when (event.type) {
-                                                        PointerEventType.Enter -> isHovered = true
-                                                        PointerEventType.Exit -> isHovered = false
-                                                    }
-                                                }
-                                            }
-                                        }
-                                ) {
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shadowElevation = 4.dp,
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.White
+                        ) {
+                            LazyColumn {
+                                item {
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -344,154 +312,234 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
                                     ) {
                                         Checkbox(
                                             checked = false,
-                                            onCheckedChange = { /* TODO: Seleccionar usuario */ },
+                                            onCheckedChange = { /* TODO: Seleccionar todos */ },
                                             modifier = Modifier.width(48.dp)
                                         )
-                                        when (type) {
-                                            "Alumno" -> {
-                                                val student = user as org.example.appbbmges.StudentEntity
-                                                val studentFullName = "${student.first_name} ${student.last_name_paternal ?: ""} ${student.last_name_maternal ?: ""}".trim()
-                                                Text("Alumno", modifier = Modifier.weight(1.5f), color = AppColors.TextColor)
-                                                Text(studentFullName, modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                Text(student.phone ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                Text(student.email ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                Text(if (student.active == 1L) "Sí" else "No", modifier = Modifier.weight(1f), color = AppColors.TextColor)
-                                                IconButton(
-                                                    onClick = {
-                                                        userToEdit = userPair
-                                                        selectedUserType = "Alumno"
-                                                    },
-                                                    modifier = Modifier.weight(1f)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Edit,
-                                                        contentDescription = "Actualizar",
-                                                        tint = Color.Gray
-                                                    )
-                                                }
-                                                IconButton(
-                                                    onClick = {
-                                                        userToDelete = userPair
-                                                        showDeleteDialog = true
-                                                    },
-                                                    modifier = Modifier.weight(1f)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Delete,
-                                                        contentDescription = "Eliminar",
-                                                        tint = Color.Gray
-                                                    )
-                                                }
-                                            }
-                                            "Profesor" -> {
-                                                val teacher = user as org.example.appbbmges.TeacherEntity
-                                                val teacherFullName = "${teacher.first_name} ${teacher.last_name_paternal ?: ""} ${teacher.last_name_maternal ?: ""}".trim()
-                                                Text("Profesor", modifier = Modifier.weight(1.5f), color = AppColors.TextColor)
-                                                Text(teacherFullName, modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                Text(teacher.phone ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                Text(teacher.email ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                Text(if (teacher.active == 1L) "Sí" else "No", modifier = Modifier.weight(1f), color = AppColors.TextColor)
-                                                IconButton(
-                                                    onClick = {
-                                                        userToEdit = userPair
-                                                        selectedUserType = "Profesor"
-                                                    },
-                                                    modifier = Modifier.weight(1f)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Edit,
-                                                        contentDescription = "Actualizar",
-                                                        tint = Color.Gray
-                                                    )
-                                                }
-                                                IconButton(
-                                                    onClick = {
-                                                        userToDelete = userPair
-                                                        showDeleteDialog = true
-                                                    },
-                                                    modifier = Modifier.weight(1f)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Delete,
-                                                        contentDescription = "Eliminar",
-                                                        tint = Color.Gray
-                                                    )
+                                        Text(
+                                            "TIPO",
+                                            color = Color.Gray,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(1.5f)
+                                        )
+                                        Text(
+                                            "NOMBRE",
+                                            color = Color.Gray,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(2f)
+                                        )
+                                        Text(
+                                            "TELÉFONO",
+                                            color = Color.Gray,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(2f)
+                                        )
+                                        Text(
+                                            "EMAIL",
+                                            color = Color.Gray,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(2f)
+                                        )
+                                        Text(
+                                            "ACTIVO",
+                                            color = Color.Gray,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Spacer(modifier = Modifier.weight(2f))
+                                    }
+                                    HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
+                                }
+
+                                items(paginatedUsers) { userPair ->
+                                    var isHovered by remember { mutableStateOf(false) }
+                                    val (user, type) = userPair
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                if (isHovered) Color(0xFFF5F5F5)
+                                                else Color.White
+                                            )
+                                            .pointerInput(Unit) {
+                                                awaitPointerEventScope {
+                                                    while (true) {
+                                                        val event = awaitPointerEvent()
+                                                        when (event.type) {
+                                                            PointerEventType.Enter -> isHovered = true
+                                                            PointerEventType.Exit -> isHovered = false
+                                                        }
+                                                    }
                                                 }
                                             }
-                                            "Franquiciatario" -> {
-                                                val franchisee = user as org.example.appbbmges.FranchiseeEntity
-                                                val franchiseeFullName = "${franchisee.first_name} ${franchisee.last_name_paternal ?: ""} ${franchisee.last_name_maternal ?: ""}".trim()
-                                                Text("Franquiciatario", modifier = Modifier.weight(1.5f), color = AppColors.TextColor)
-                                                Text(franchiseeFullName, modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                Text(franchisee.phone ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                Text(franchisee.email ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                Text(if (franchisee.active == 1L) "Sí" else "No", modifier = Modifier.weight(1f), color = AppColors.TextColor)
-                                                IconButton(
-                                                    onClick = {
-                                                        userToEdit = userPair
-                                                        selectedUserType = "Franquiciatario"
-                                                    },
-                                                    modifier = Modifier.weight(1f)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Edit,
-                                                        contentDescription = "Actualizar",
-                                                        tint = Color.Gray
-                                                    )
-                                                }
-                                                IconButton(
-                                                    onClick = {
-                                                        userToDelete = userPair
-                                                        showDeleteDialog = true
-                                                    },
-                                                    modifier = Modifier.weight(1f)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Delete,
-                                                        contentDescription = "Eliminar",
-                                                        tint = Color.Gray
-                                                    )
-                                                }
-                                            }
-                                            "Administrativo" -> {
-                                                val admin = user as org.example.appbbmges.AdministrativeEntity
-                                                val adminFullName = "${admin.first_name} ${admin.last_name_paternal ?: ""} ${admin.last_name_maternal ?: ""}".trim()
-                                                Text("Administrativo", modifier = Modifier.weight(1.5f), color = AppColors.TextColor)
-                                                Text(adminFullName, modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                Text(admin.phone ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                Text(admin.email ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                Text(if (admin.active == 1L) "Sí" else "No", modifier = Modifier.weight(1f), color = AppColors.TextColor)
-                                                IconButton(
-                                                    onClick = {
-                                                        userToEdit = userPair
-                                                        selectedUserType = "Administrativo"
-                                                    },
-                                                    modifier = Modifier.weight(1f)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Edit,
-                                                        contentDescription = "Actualizar",
-                                                        tint = Color.Gray
-                                                    )
-                                                }
-                                                IconButton(
-                                                    onClick = {
-                                                        userToDelete = userPair
-                                                        showDeleteDialog = true
-                                                    },
-                                                    modifier = Modifier.weight(1f)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Delete,
-                                                        contentDescription = "Eliminar",
-                                                        tint = Color.Gray
-                                                    )
+                                    ) {
+                                        Surface(
+                                            onClick = { selectedProfile = userPair },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            color = Color.Transparent
+                                        ) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Checkbox(
+                                                    checked = false,
+                                                    onCheckedChange = { /* TODO: Seleccionar usuario */ },
+                                                    modifier = Modifier.width(48.dp)
+                                                )
+                                                when (type) {
+                                                    "Alumno" -> {
+                                                        val student = user as org.example.appbbmges.StudentEntity
+                                                        val studentFullName = "${student.first_name} ${student.last_name_paternal ?: ""} ${student.last_name_maternal ?: ""}".trim()
+                                                        Text("Alumno", modifier = Modifier.weight(1.5f), color = AppColors.TextColor)
+                                                        Text(studentFullName, modifier = Modifier.weight(2f), color = AppColors.TextColor)
+                                                        Text(student.phone ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
+                                                        Text(student.email ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
+                                                        Text(if (student.active == 1L) "Sí" else "No", modifier = Modifier.weight(1f), color = AppColors.TextColor)
+                                                        IconButton(
+                                                            onClick = {
+                                                                userToEdit = userPair
+                                                                selectedUserType = "Alumno"
+                                                            },
+                                                            modifier = Modifier.weight(1f)
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Edit,
+                                                                contentDescription = "Actualizar",
+                                                                tint = Color.Gray
+                                                            )
+                                                        }
+                                                        IconButton(
+                                                            onClick = {
+                                                                userToDelete = userPair
+                                                                showDeleteDialog = true
+                                                            },
+                                                            modifier = Modifier.weight(1f)
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Delete,
+                                                                contentDescription = "Eliminar",
+                                                                tint = Color.Gray
+                                                            )
+                                                        }
+                                                    }
+                                                    "Profesor" -> {
+                                                        val teacher = user as org.example.appbbmges.TeacherEntity
+                                                        val teacherFullName = "${teacher.first_name} ${teacher.last_name_paternal ?: ""} ${teacher.last_name_maternal ?: ""}".trim()
+                                                        Text("Profesor", modifier = Modifier.weight(1.5f), color = AppColors.TextColor)
+                                                        Text(teacherFullName, modifier = Modifier.weight(2f), color = AppColors.TextColor)
+                                                        Text(teacher.phone ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
+                                                        Text(teacher.email ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
+                                                        Text(if (teacher.active == 1L) "Sí" else "No", modifier = Modifier.weight(1f), color = AppColors.TextColor)
+                                                        IconButton(
+                                                            onClick = {
+                                                                userToEdit = userPair
+                                                                selectedUserType = "Profesor"
+                                                            },
+                                                            modifier = Modifier.weight(1f)
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Edit,
+                                                                contentDescription = "Actualizar",
+                                                                tint = Color.Gray
+                                                            )
+                                                        }
+                                                        IconButton(
+                                                            onClick = {
+                                                                userToDelete = userPair
+                                                                showDeleteDialog = true
+                                                            },
+                                                            modifier = Modifier.weight(1f)
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Delete,
+                                                                contentDescription = "Eliminar",
+                                                                tint = Color.Gray
+                                                            )
+                                                        }
+                                                    }
+                                                    "Franquiciatario" -> {
+                                                        val franchisee = user as org.example.appbbmges.FranchiseeEntity
+                                                        val franchiseeFullName = "${franchisee.first_name} ${franchisee.last_name_paternal ?: ""} ${franchisee.last_name_maternal ?: ""}".trim()
+                                                        Text("Franquiciatario", modifier = Modifier.weight(1.5f), color = AppColors.TextColor)
+                                                        Text(franchiseeFullName, modifier = Modifier.weight(2f), color = AppColors.TextColor)
+                                                        Text(franchisee.phone ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
+                                                        Text(franchisee.email ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
+                                                        Text(if (franchisee.active == 1L) "Sí" else "No", modifier = Modifier.weight(1f), color = AppColors.TextColor)
+                                                        IconButton(
+                                                            onClick = {
+                                                                userToEdit = userPair
+                                                                selectedUserType = "Franquiciatario"
+                                                            },
+                                                            modifier = Modifier.weight(1f)
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Edit,
+                                                                contentDescription = "Actualizar",
+                                                                tint = Color.Gray
+                                                            )
+                                                        }
+                                                        IconButton(
+                                                            onClick = {
+                                                                userToDelete = userPair
+                                                                showDeleteDialog = true
+                                                            },
+                                                            modifier = Modifier.weight(1f)
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Delete,
+                                                                contentDescription = "Eliminar",
+                                                                tint = Color.Gray
+                                                            )
+                                                        }
+                                                    }
+                                                    "Administrativo" -> {
+                                                        val admin = user as org.example.appbbmges.AdministrativeEntity
+                                                        val adminFullName = "${admin.first_name} ${admin.last_name_paternal ?: ""} ${admin.last_name_maternal ?: ""}".trim()
+                                                        Text("Administrativo", modifier = Modifier.weight(1.5f), color = AppColors.TextColor)
+                                                        Text(adminFullName, modifier = Modifier.weight(2f), color = AppColors.TextColor)
+                                                        Text(admin.phone ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
+                                                        Text(admin.email ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
+                                                        Text(if (admin.active == 1L) "Sí" else "No", modifier = Modifier.weight(1f), color = AppColors.TextColor)
+                                                        IconButton(
+                                                            onClick = {
+                                                                userToEdit = userPair
+                                                                selectedUserType = "Administrativo"
+                                                            },
+                                                            modifier = Modifier.weight(1f)
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Edit,
+                                                                contentDescription = "Actualizar",
+                                                                tint = Color.Gray
+                                                            )
+                                                        }
+                                                        IconButton(
+                                                            onClick = {
+                                                                userToDelete = userPair
+                                                                showDeleteDialog = true
+                                                            },
+                                                            modifier = Modifier.weight(1f)
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Delete,
+                                                                contentDescription = "Eliminar",
+                                                                tint = Color.Gray
+                                                            )
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
-                                    if (paginatedUsers.last() != userPair) {
-                                        HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
+                                        if (paginatedUsers.last() != userPair) {
+                                            HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
+                                        }
                                     }
                                 }
                             }
@@ -574,81 +622,124 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
                         }
                     }
                 }
-
-                if (showDeleteDialog && userToDelete != null) {
-                    val (user, type) = userToDelete!!
-                    val userName = when (user) {
-                        is org.example.appbbmges.StudentEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
-                        is org.example.appbbmges.TeacherEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
-                        is org.example.appbbmges.FranchiseeEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
-                        is org.example.appbbmges.AdministrativeEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
-                        else -> ""
-                    }
-                    AlertDialog(
-                        onDismissRequest = {
+            }
+        }
+        if (showDeleteDialog && userToDelete != null) {
+            val (user, type) = userToDelete!!
+            val userName = when (user) {
+                is org.example.appbbmges.StudentEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
+                is org.example.appbbmges.TeacherEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
+                is org.example.appbbmges.FranchiseeEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
+                is org.example.appbbmges.AdministrativeEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
+                else -> ""
+            }
+            AlertDialog(
+                onDismissRequest = {
+                    showDeleteDialog = false
+                    userToDelete = null
+                },
+                title = {
+                    Text(
+                        "Eliminar",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        "¿Estás seguro que quieres eliminar a $userName?",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            when (type) {
+                                "Alumno" -> {
+                                    val student = user as org.example.appbbmges.StudentEntity
+                                    repository.deleteStudent(student.id)
+                                    students.value = repository.getAllStudents()
+                                }
+                                "Profesor" -> {
+                                    val teacher = user as org.example.appbbmges.TeacherEntity
+                                    repository.deleteTeacher(teacher.id)
+                                    teachers.value = repository.getAllTeachers()
+                                }
+                                "Franquiciatario" -> {
+                                    val franchisee = user as org.example.appbbmges.FranchiseeEntity
+                                    repository.deleteFranchisee(franchisee.id)
+                                    franchisees.value = repository.getAllFranchisees()
+                                }
+                                "Administrativo" -> {
+                                    val admin = user as org.example.appbbmges.AdministrativeEntity
+                                    repository.deleteAdministrative(admin.id)
+                                    administratives.value = repository.getAllAdministratives()
+                                }
+                            }
                             showDeleteDialog = false
                             userToDelete = null
                         },
-                        title = {
-                            Text(
-                                "Eliminar",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
-                            )
+                        colors = ButtonDefaults.textButtonColors(contentColor = AppColors.Primary)
+                    ) {
+                        Text("Confirmar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteDialog = false
+                            userToDelete = null
                         },
-                        text = {
-                            Text(
-                                "¿Estás seguro que quieres eliminar a $userName?",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    when (type) {
-                                        "Alumno" -> {
-                                            val student = user as org.example.appbbmges.StudentEntity
-                                            repository.deleteStudent(student.id)
-                                            students.value = repository.getAllStudents()
-                                        }
-                                        "Profesor" -> {
-                                            val teacher = user as org.example.appbbmges.TeacherEntity
-                                            repository.deleteTeacher(teacher.id)
-                                            teachers.value = repository.getAllTeachers()
-                                        }
-                                        "Franquiciatario" -> {
-                                            val franchisee = user as org.example.appbbmges.FranchiseeEntity
-                                            repository.deleteFranchisee(franchisee.id)
-                                            franchisees.value = repository.getAllFranchisees()
-                                        }
-                                        "Administrativo" -> {
-                                            val admin = user as org.example.appbbmges.AdministrativeEntity
-                                            repository.deleteAdministrative(admin.id)
-                                            administratives.value = repository.getAllAdministratives()
-                                        }
-                                    }
-                                    showDeleteDialog = false
-                                    userToDelete = null
-                                },
-                                colors = ButtonDefaults.textButtonColors(contentColor = AppColors.Primary)
-                            ) {
-                                Text("Confirmar")
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(
-                                onClick = {
-                                    showDeleteDialog = false
-                                    userToDelete = null
-                                },
-                                colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
-                            ) {
-                                Text("Cancelar")
-                            }
-                        }
-                    )
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                    ) {
+                        Text("Cancelar")
+                    }
                 }
-            }
+            )
+        }
+    }
+}
+
+@Composable
+fun ProfileScreen(
+    userPair: Pair<Any, String>,
+    onDismiss: () -> Unit,
+    repository: Repository
+) {
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppColors.Background)
+            .padding(16.dp)
+    ) {
+        val (user, type) = userPair
+        val userName = when (user) {
+            is org.example.appbbmges.StudentEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
+            is org.example.appbbmges.TeacherEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
+            is org.example.appbbmges.FranchiseeEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
+            is org.example.appbbmges.AdministrativeEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
+            else -> "Desconocido"
+        }
+
+        Text(
+            text = "Perfil de $userName",
+            style = MaterialTheme.typography.headlineSmall,
+            color = AppColors.Primary,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Tipo: $type",
+            color = AppColors.TextColor
+        )
+        // Add more user details here as needed
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onDismiss,
+            colors = ButtonDefaults.buttonColors(containerColor = AppColors.Primary)
+        ) {
+            Text("Cerrar", color = AppColors.OnPrimary)
         }
     }
 }

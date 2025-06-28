@@ -72,7 +72,7 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
 
             }
         } else {
-            // Contenido principal del SettingsScreen
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -80,7 +80,7 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
                     .padding(24.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Header
+
                 Text(
                     text = "Configuración",
                     fontSize = 28.sp,
@@ -112,7 +112,7 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
                             ConfigurationCard(
                                 icon = Icons.Outlined.School,
                                 title = "Agregar Nuevo Nivel",
-                                backgroundColor = Color(0xFFFFE0B2), // Naranja claro
+                                backgroundColor = Color(0xFFFFE0B2),
                                 iconColor = Color(0xFFFF9800)
                             ) {
                                 selectedFormType = "Nivel"
@@ -120,7 +120,6 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
                         }
                     }
 
-                    // Fila 2
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -129,7 +128,7 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
                             ConfigurationCard(
                                 icon = Icons.Outlined.Inventory,
                                 title = "Agregar Nuevo Producto",
-                                backgroundColor = Color(0xFFC8E6C9), // Verde claro
+                                backgroundColor = Color(0xFFC8E6C9),
                                 iconColor = Color(0xFF4CAF50)
                             ) {
                                 selectedFormType = "Producto"
@@ -140,7 +139,7 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
                             ConfigurationCard(
                                 icon = Icons.Outlined.SportsGymnastics,
                                 title = "Agregar Nueva Disciplina",
-                                backgroundColor = Color(0xFFDCEDC8), // Verde menta claro
+                                backgroundColor = Color(0xFFDCEDC8),
                                 iconColor = Color(0xFF8BC34A)
                             ) {
                                 selectedFormType = "Disciplina"
@@ -164,7 +163,6 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
                             }
                         }
 
-                        // Espacio vacío para mantener el layout
                         Box(modifier = Modifier.weight(1f)) {
                             Spacer(modifier = Modifier.height(140.dp))
                         }
