@@ -29,7 +29,6 @@ import kotlinx.datetime.TimeZone
 import org.example.appbbmges.ui.dashboard.clickable
 
 data class StudentData(
-    val franchiseId: Long,
     val firstName: String,
     val lastNamePaternal: String?,
     val lastNameMaternal: String?,
@@ -37,6 +36,7 @@ data class StudentData(
     val birthDate: String?,
     val nationality: String?,
     val curp: String?,
+    val countryCode: String?,
     val phone: String?,
     val email: String?,
     val addressStreet: String?,
@@ -50,7 +50,6 @@ data class StudentData(
 
 enum class StudentFormStep {
     PERSONAL_INFO,
-    IDENTITY_INFO,
     ADDRESS_INFO,
     ADDITIONAL_INFO,
     CONFIRMATION
@@ -144,6 +143,24 @@ fun generateCURP(
     return "$firstLetter$firstVowel$secondLetter$thirdLetter$year$month${day}$sexLetter$state$firstConsonant$secondConsonant$thirdConsonant$randomDigits"
 }
 
+// Función para formatear nombres (primera letra mayúscula, resto minúsculas, sin espacios al final)
+fun formatName(input: String): String {
+    return input.trim().lowercase().replaceFirstChar {
+        if (it.isLowerCase()) it.titlecase() else it.toString()
+    }
+}
+
+// Función para validar email con mejor regex
+fun isValidEmail(email: String): Boolean {
+    val emailPattern = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+    return emailPattern.matches(email)
+}
+
+// Función para validar teléfono (solo números, 10 dígitos)
+fun isValidPhone(phone: String): Boolean {
+    return phone.matches(Regex("^\\d{10}$"))
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerModal(
@@ -186,7 +203,6 @@ fun AddAlumnoScreen(
 ) {
     var currentStep by remember { mutableStateOf(StudentFormStep.PERSONAL_INFO) }
 
-    var franchiseId by remember { mutableStateOf("") }
     var firstName by remember { mutableStateOf("") }
     var lastNamePaternal by remember { mutableStateOf("") }
     var lastNameMaternal by remember { mutableStateOf("") }
@@ -194,6 +210,7 @@ fun AddAlumnoScreen(
     var birthDate by remember { mutableStateOf("") }
     var nationality by remember { mutableStateOf("Mexicana") }
     var curp by remember { mutableStateOf("") }
+    var countryCode by remember { mutableStateOf("+52") }
     var phone by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var addressStreet by remember { mutableStateOf("") }
@@ -206,6 +223,7 @@ fun AddAlumnoScreen(
 
     var genderExpanded by remember { mutableStateOf(false) }
     var nationalityExpanded by remember { mutableStateOf(false) }
+    var countryCodeExpanded by remember { mutableStateOf(false) }
 
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -215,21 +233,40 @@ fun AddAlumnoScreen(
         "Alemana", "Italiana", "Británica", "Argentina", "Brasileña",
         "Colombiana", "Peruana", "Chilena", "Venezolana", "Otra"
     )
+    val countryCodeOptions = listOf(
+        "+52" to "México",
+        "+1" to "Estados Unidos/Canadá",
+        "+34" to "España",
+        "+33" to "Francia",
+        "+49" to "Alemania",
+        "+39" to "Italia",
+        "+44" to "Reino Unido",
+        "+54" to "Argentina",
+        "+55" to "Brasil",
+        "+57" to "Colombia",
+        "+51" to "Perú",
+        "+56" to "Chile",
+        "+58" to "Venezuela"
+    )
 
-    var franchiseIdError by remember { mutableStateOf<String?>(null) }
     var firstNameError by remember { mutableStateOf<String?>(null) }
     var lastNamePaternalError by remember { mutableStateOf<String?>(null) }
     var lastNameMaternalError by remember { mutableStateOf<String?>(null) }
     var birthDateError by remember { mutableStateOf<String?>(null) }
+    var curpError by remember { mutableStateOf<String?>(null) }
     var phoneError by remember { mutableStateOf<String?>(null) }
     var emailError by remember { mutableStateOf<String?>(null) }
     var addressStreetError by remember { mutableStateOf<String?>(null) }
     var addressZipError by remember { mutableStateOf<String?>(null) }
     var formError by remember { mutableStateOf<String?>(null) }
 
+    // Auto-generar CURP cuando se tienen los datos necesarios
     LaunchedEffect(firstName, lastNamePaternal, lastNameMaternal, birthDate, gender) {
         if (firstName.isNotEmpty() && lastNamePaternal.isNotEmpty() && birthDate.isNotEmpty() && gender.isNotEmpty()) {
-            curp = generateCURP(firstName, lastNamePaternal, lastNameMaternal, birthDate, gender)
+            val generatedCurp = generateCURP(firstName, lastNamePaternal, lastNameMaternal, birthDate, gender)
+            if (curp.isEmpty()) { // Solo si no ha sido editado manualmente
+                curp = generatedCurp
+            }
         }
     }
 
@@ -238,6 +275,7 @@ fun AddAlumnoScreen(
         lastNamePaternalError = null
         lastNameMaternalError = null
         birthDateError = null
+        curpError = null
         phoneError = null
         emailError = null
 
@@ -286,35 +324,28 @@ fun AddAlumnoScreen(
             }
         }
 
-        // Validar teléfono
-        if (phone.isNotEmpty()) {
-            if (phone.length !in 10..15) {
-                phoneError = "El teléfono debe tener entre 10 y 15 dígitos"
+        // Validar CURP
+        if (curp.isNotEmpty()) {
+            if (curp.length != 18) {
+                curpError = "El CURP debe tener exactamente 18 caracteres"
                 isValid = false
-            } else if (!phone.all { it.isDigit() }) {
-                phoneError = "El teléfono solo debe contener dígitos"
+            } else if (!curp.matches(Regex("^[A-Z]{4}\\d{6}[HM][A-Z]{5}\\d{2}$"))) {
+                curpError = "El formato del CURP no es válido"
                 isValid = false
             }
         }
 
-        if (email.isNotEmpty() && (!email.contains("@") || !email.contains("."))) {
-            emailError = "El email no tiene un formato válido"
-            isValid = false
+        // Validar teléfono
+        if (phone.isNotEmpty()) {
+            if (!isValidPhone(phone)) {
+                phoneError = "El teléfono debe tener exactamente 10 dígitos"
+                isValid = false
+            }
         }
 
-        return isValid
-    }
-
-    fun validateIdentityInfo(): Boolean {
-        franchiseIdError = null
-
-        var isValid = true
-
-        if (franchiseId.isEmpty()) {
-            franchiseIdError = "El ID de franquicia es obligatorio"
-            isValid = false
-        } else if (franchiseId.toLongOrNull() == null || franchiseId.toLong() <= 0) {
-            franchiseIdError = "El ID de franquicia debe ser un número positivo válido"
+        // Validar email
+        if (email.isNotEmpty() && !isValidEmail(email)) {
+            emailError = "El formato del email no es válido"
             isValid = false
         }
 
@@ -341,7 +372,7 @@ fun AddAlumnoScreen(
     }
 
     fun validateForm(): Boolean {
-        return validatePersonalInfo() && validateIdentityInfo() && validateAddressInfo()
+        return validatePersonalInfo() && validateAddressInfo()
     }
 
     Box(
@@ -364,7 +395,7 @@ fun AddAlumnoScreen(
             ) {
                 Box(
                     modifier = Modifier
-                         .fillMaxSize()
+                        .fillMaxSize()
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -394,10 +425,9 @@ fun AddAlumnoScreen(
                     LinearProgressIndicator(
                         progress = {
                             when (currentStep) {
-                                StudentFormStep.PERSONAL_INFO -> 0.2f
-                                StudentFormStep.IDENTITY_INFO -> 0.4f
-                                StudentFormStep.ADDRESS_INFO -> 0.6f
-                                StudentFormStep.ADDITIONAL_INFO -> 0.8f
+                                StudentFormStep.PERSONAL_INFO -> 0.25f
+                                StudentFormStep.ADDRESS_INFO -> 0.50f
+                                StudentFormStep.ADDITIONAL_INFO -> 0.75f
                                 StudentFormStep.CONFIRMATION -> 1.0f
                             }
                         },
@@ -409,11 +439,10 @@ fun AddAlumnoScreen(
 
                     Text(
                         text = when (currentStep) {
-                            StudentFormStep.PERSONAL_INFO -> "Datos Personales (Paso 1 de 5)"
-                            StudentFormStep.IDENTITY_INFO -> "Información de Identidad (Paso 2 de 5)"
-                            StudentFormStep.ADDRESS_INFO -> "Dirección (Paso 3 de 5)"
-                            StudentFormStep.ADDITIONAL_INFO -> "Información Adicional (Paso 4 de 5)"
-                            StudentFormStep.CONFIRMATION -> "Confirmación (Paso 5 de 5)"
+                            StudentFormStep.PERSONAL_INFO -> "Datos Personales (Paso 1 de 4)"
+                            StudentFormStep.ADDRESS_INFO -> "Dirección (Paso 2 de 4)"
+                            StudentFormStep.ADDITIONAL_INFO -> "Información Adicional (Paso 3 de 4)"
+                            StudentFormStep.CONFIRMATION -> "Confirmación (Paso 4 de 4)"
                         },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
@@ -430,7 +459,10 @@ fun AddAlumnoScreen(
                             ) {
                                 OutlinedTextField(
                                     value = firstName,
-                                    onValueChange = { firstName = it; firstNameError = null },
+                                    onValueChange = {
+                                        firstName = formatName(it)
+                                        firstNameError = null
+                                    },
                                     label = { Text("Nombre(s)") },
                                     placeholder = { Text("Nombre(s)") },
                                     modifier = Modifier.weight(1f),
@@ -447,7 +479,10 @@ fun AddAlumnoScreen(
 
                                 OutlinedTextField(
                                     value = lastNamePaternal,
-                                    onValueChange = { lastNamePaternal = it; lastNamePaternalError = null },
+                                    onValueChange = {
+                                        lastNamePaternal = formatName(it)
+                                        lastNamePaternalError = null
+                                    },
                                     label = { Text("Apellido Paterno") },
                                     placeholder = { Text("Apellido Paterno") },
                                     modifier = Modifier.weight(1f),
@@ -464,7 +499,10 @@ fun AddAlumnoScreen(
 
                                 OutlinedTextField(
                                     value = lastNameMaternal,
-                                    onValueChange = { lastNameMaternal = it; lastNameMaternalError = null },
+                                    onValueChange = {
+                                        lastNameMaternal = formatName(it)
+                                        lastNameMaternalError = null
+                                    },
                                     label = { Text("Apellido Materno") },
                                     placeholder = { Text("Apellido Materno") },
                                     modifier = Modifier.weight(1f),
@@ -486,7 +524,6 @@ fun AddAlumnoScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-
                                 ExposedDropdownMenuBox(
                                     expanded = genderExpanded,
                                     onExpandedChange = { genderExpanded = !genderExpanded },
@@ -605,9 +642,9 @@ fun AddAlumnoScreen(
 
                                 OutlinedTextField(
                                     value = email,
-                                    onValueChange = { email = it; emailError = null },
+                                    onValueChange = { email = it.trim(); emailError = null },
                                     label = { Text("Email") },
-                                    placeholder = { Text("Email") },
+                                    placeholder = { Text("ejemplo@correo.com") },
                                     modifier = Modifier.weight(1f),
                                     singleLine = true,
                                     isError = emailError != null,
@@ -624,16 +661,88 @@ fun AddAlumnoScreen(
 
                             Spacer(modifier = Modifier.height(4.dp))
 
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                // Dropdown para código de país
+                                ExposedDropdownMenuBox(
+                                    expanded = countryCodeExpanded,
+                                    onExpandedChange = { countryCodeExpanded = !countryCodeExpanded },
+                                    modifier = Modifier.width(140.dp)
+                                ) {
+                                    OutlinedTextField(
+                                        value = countryCodeOptions.find { it.first == countryCode }?.let { "${it.first} ${it.second}" } ?: countryCode,
+                                        onValueChange = { },
+                                        readOnly = true,
+                                        label = { Text("País") },
+                                        trailingIcon = {
+                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = countryCodeExpanded)
+                                        },
+                                        modifier = Modifier
+                                            .menuAnchor()
+                                            .fillMaxWidth(),
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = AppColors.Primary,
+                                            unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f)
+                                        )
+                                    )
+
+                                    ExposedDropdownMenu(
+                                        expanded = countryCodeExpanded,
+                                        onDismissRequest = { countryCodeExpanded = false }
+                                    ) {
+                                        countryCodeOptions.forEach { (code, country) ->
+                                            DropdownMenuItem(
+                                                text = { Text("$code $country") },
+                                                onClick = {
+                                                    countryCode = code
+                                                    countryCodeExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+
+                                OutlinedTextField(
+                                    value = phone,
+                                    onValueChange = {
+                                        // Solo permitir números y máximo 10 dígitos
+                                        val filtered = it.filter { char -> char.isDigit() }.take(10)
+                                        phone = filtered
+                                        phoneError = null
+                                    },
+                                    label = { Text("Teléfono") },
+                                    placeholder = { Text("1234567890") },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    isError = phoneError != null,
+                                    supportingText = { if (phoneError != null) Text(phoneError!!, style = MaterialTheme.typography.bodySmall) },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = AppColors.Primary,
+                                        unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f),
+                                        errorBorderColor = MaterialTheme.colorScheme.error
+                                    )
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
                             OutlinedTextField(
-                                value = phone,
-                                onValueChange = { phone = it; phoneError = null },
-                                label = { Text("Teléfono") },
-                                placeholder = { Text("Teléfono") },
+                                value = curp,
+                                onValueChange = {
+                                    curp = it.uppercase().take(18) // Limitar a 18 caracteres y convertir a mayúsculas
+                                    curpError = null
+                                },
+                                label = { Text("CURP") },
+                                placeholder = { Text("Ej. ABCD123456HDFX01") },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
-                                isError = phoneError != null,
-                                supportingText = { if (phoneError != null) Text(phoneError!!, style = MaterialTheme.typography.bodySmall) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                isError = curpError != null,
+                                supportingText = { if (curpError != null) Text(curpError!!, style = MaterialTheme.typography.bodySmall) },
                                 shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = AppColors.Primary,
@@ -643,85 +752,6 @@ fun AddAlumnoScreen(
                             )
                         }
 
-                        StudentFormStep.IDENTITY_INFO -> {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedTextField(
-                                    value = franchiseId,
-                                    onValueChange = { franchiseId = it; franchiseIdError = null },
-                                    label = { Text("ID de Franquicia") },
-                                    placeholder = { Text("ID de Franquicia") },
-                                    modifier = Modifier.weight(1f),
-                                    singleLine = true,
-                                    isError = franchiseIdError != null,
-                                    supportingText = { if (franchiseIdError != null) Text(franchiseIdError!!, style = MaterialTheme.typography.bodySmall) },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = AppColors.Primary,
-                                        unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f),
-                                        errorBorderColor = MaterialTheme.colorScheme.error
-                                    )
-                                )
-
-                                OutlinedTextField(
-                                    value = curp,
-                                    onValueChange = { /* Solo lectura, se genera automáticamente */ },
-                                    label = { Text("CURP (Auto-generado)") },
-                                    placeholder = { Text("Se genera automáticamente") },
-                                    modifier = Modifier.weight(1f),
-                                    singleLine = true,
-                                    readOnly = true,
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = AppColors.Primary,
-                                        unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f),
-                                        disabledBorderColor = Color.Gray.copy(alpha = 0.3f),
-                                        disabledTextColor = Color.Gray
-                                    )
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            Text(
-                                text = "Estado",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(
-                                        selected = active,
-                                        onClick = { active = true },
-                                        colors = RadioButtonDefaults.colors(selectedColor = AppColors.Primary)
-                                    )
-                                    Text("Activo", modifier = Modifier.padding(start = 4.dp))
-                                }
-
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(
-                                        selected = !active,
-                                        onClick = { active = false },
-                                        colors = RadioButtonDefaults.colors(selectedColor = AppColors.Primary)
-                                    )
-                                    Text("Inactivo", modifier = Modifier.padding(start = 4.dp))
-                                }
-                            }
-                        }
-
                         StudentFormStep.ADDRESS_INFO -> {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -729,9 +759,12 @@ fun AddAlumnoScreen(
                             ) {
                                 OutlinedTextField(
                                     value = addressStreet,
-                                    onValueChange = { addressStreet = it; addressStreetError = null },
+                                    onValueChange = {
+                                        addressStreet = it
+                                        addressStreetError = null
+                                    },
                                     label = { Text("Calle y número") },
-                                    placeholder = { Text("Calle y número") },
+                                    placeholder = { Text("Ej. Av. Siempre Viva 123") },
                                     modifier = Modifier.weight(1f),
                                     singleLine = true,
                                     isError = addressStreetError != null,
@@ -746,9 +779,12 @@ fun AddAlumnoScreen(
 
                                 OutlinedTextField(
                                     value = addressZip,
-                                    onValueChange = { addressZip = it; addressZipError = null },
+                                    onValueChange = {
+                                        addressZip = it.filter { char -> char.isDigit() }.take(5) // Limitar a 5 dígitos
+                                        addressZipError = null
+                                    },
                                     label = { Text("Código Postal") },
-                                    placeholder = { Text("Código Postal") },
+                                    placeholder = { Text("Ej. 12345") },
                                     modifier = Modifier.weight(1f),
                                     singleLine = true,
                                     isError = addressZipError != null,
@@ -771,7 +807,9 @@ fun AddAlumnoScreen(
                             ) {
                                 OutlinedTextField(
                                     value = parentFatherName,
-                                    onValueChange = { parentFatherName = it },
+                                    onValueChange = {
+                                        parentFatherName = formatName(it)
+                                    },
                                     label = { Text("Nombre del Padre") },
                                     placeholder = { Text("Opcional") },
                                     modifier = Modifier.weight(1f),
@@ -785,7 +823,9 @@ fun AddAlumnoScreen(
 
                                 OutlinedTextField(
                                     value = parentMotherName,
-                                    onValueChange = { parentMotherName = it },
+                                    onValueChange = {
+                                        parentMotherName = formatName(it)
+                                    },
                                     label = { Text("Nombre de la Madre") },
                                     placeholder = { Text("Opcional") },
                                     modifier = Modifier.weight(1f),
@@ -808,7 +848,7 @@ fun AddAlumnoScreen(
                                     value = bloodType,
                                     onValueChange = { bloodType = it },
                                     label = { Text("Tipo de Sangre") },
-                                    placeholder = { Text("Opcional") },
+                                    placeholder = { Text("Ej. O+") },
                                     modifier = Modifier.weight(1f),
                                     singleLine = true,
                                     shape = RoundedCornerShape(8.dp),
@@ -843,73 +883,39 @@ fun AddAlumnoScreen(
                                     modifier = Modifier.padding(16.dp)
                                 ) {
                                     Text(
-                                        text = "Datos Personales",
-                                        style = MaterialTheme.typography.titleSmall,
+                                        text = "Confirmación de Datos",
+                                        style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
                                     )
 
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
 
                                     Text("Nombre(s): $firstName")
                                     if (lastNamePaternal.isNotEmpty()) Text("Apellido Paterno: $lastNamePaternal")
                                     if (lastNameMaternal.isNotEmpty()) Text("Apellido Materno: $lastNameMaternal")
                                     if (gender.isNotEmpty()) Text("Género: $gender")
-                                    if (birthDate.isNotEmpty()) Text("Fecha de nacimiento: $birthDate")
+                                    if (birthDate.isNotEmpty()) Text("Fecha de Nacimiento: $birthDate")
                                     if (nationality.isNotEmpty()) Text("Nacionalidad: $nationality")
-                                    if (email.isNotEmpty()) Text("Email: $email")
-                                    if (phone.isNotEmpty()) Text("Teléfono: $phone")
-
-                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                    Text(
-                                        text = "Información de Identidad",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold
-                                    )
-
-                                    Spacer(modifier = Modifier.height(4.dp))
-
-                                    Text("ID de Franquicia: $franchiseId")
                                     if (curp.isNotEmpty()) Text("CURP: $curp")
-                                    Text("Estado: ${if (active) "Activo" else "Inactivo"}")
-
-                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                    Text(
-                                        text = "Dirección",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold
-                                    )
-
-                                    Spacer(modifier = Modifier.height(4.dp))
-
+                                    if (countryCode.isNotEmpty() && phone.isNotEmpty()) Text("Teléfono: $countryCode $phone")
+                                    if (email.isNotEmpty()) Text("Email: $email")
                                     if (addressStreet.isNotEmpty()) Text("Calle: $addressStreet")
                                     if (addressZip.isNotEmpty()) Text("Código Postal: $addressZip")
-
-                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                    Text(
-                                        text = "Información Adicional",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold
-                                    )
-
-                                    Spacer(modifier = Modifier.height(4.dp))
-
                                     if (parentFatherName.isNotEmpty()) Text("Nombre del Padre: $parentFatherName")
                                     if (parentMotherName.isNotEmpty()) Text("Nombre de la Madre: $parentMotherName")
                                     if (bloodType.isNotEmpty()) Text("Tipo de Sangre: $bloodType")
                                     if (chronicDisease.isNotEmpty()) Text("Enfermedad Crónica: $chronicDisease")
-                                }
-                            }
+                                    Text("Estado: ${if (active) "Activo" else "Inactivo"}")
 
-                            if (formError != null) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = formError!!,
-                                    color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
+                                    if (formError != null) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = formError!!,
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -937,11 +943,10 @@ fun AddAlumnoScreen(
                             OutlinedButton(
                                 onClick = {
                                     currentStep = when (currentStep) {
-                                        StudentFormStep.IDENTITY_INFO -> StudentFormStep.PERSONAL_INFO
-                                        StudentFormStep.ADDRESS_INFO -> StudentFormStep.IDENTITY_INFO
+                                        StudentFormStep.ADDRESS_INFO -> StudentFormStep.PERSONAL_INFO
                                         StudentFormStep.ADDITIONAL_INFO -> StudentFormStep.ADDRESS_INFO
                                         StudentFormStep.CONFIRMATION -> StudentFormStep.ADDITIONAL_INFO
-                                        else -> StudentFormStep.PERSONAL_INFO
+                                        else -> currentStep
                                     }
                                 },
                                 modifier = Modifier.width(110.dp),
@@ -949,7 +954,6 @@ fun AddAlumnoScreen(
                             ) {
                                 Text("Anterior")
                             }
-
                             Spacer(modifier = Modifier.width(8.dp))
                         }
 
@@ -958,11 +962,6 @@ fun AddAlumnoScreen(
                                 when (currentStep) {
                                     StudentFormStep.PERSONAL_INFO -> {
                                         if (validatePersonalInfo()) {
-                                            currentStep = StudentFormStep.IDENTITY_INFO
-                                        }
-                                    }
-                                    StudentFormStep.IDENTITY_INFO -> {
-                                        if (validateIdentityInfo()) {
                                             currentStep = StudentFormStep.ADDRESS_INFO
                                         }
                                     }
@@ -977,7 +976,7 @@ fun AddAlumnoScreen(
                                     StudentFormStep.CONFIRMATION -> {
                                         if (validateForm()) {
                                             repository.insertStudent(
-                                                franchiseId = franchiseId.toLong(),
+                                                franchiseId = 0L,
                                                 firstName = firstName,
                                                 lastNamePaternal = lastNamePaternal.takeIf { it.isNotEmpty() },
                                                 lastNameMaternal = lastNameMaternal.takeIf { it.isNotEmpty() },
@@ -1006,15 +1005,11 @@ fun AddAlumnoScreen(
                                     }
                                 }
                             },
-                            modifier = Modifier.width(
-                                if (currentStep == StudentFormStep.CONFIRMATION) 130.dp else 110.dp
-                            ),
+                            modifier = Modifier.width(if (currentStep == StudentFormStep.CONFIRMATION) 130.dp else 110.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = AppColors.Primary),
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            Text(
-                                if (currentStep == StudentFormStep.CONFIRMATION) "Registrar" else "Siguiente"
-                            )
+                            Text(if (currentStep == StudentFormStep.CONFIRMATION) "Registrar" else "Siguiente")
                         }
                     }
                 }
