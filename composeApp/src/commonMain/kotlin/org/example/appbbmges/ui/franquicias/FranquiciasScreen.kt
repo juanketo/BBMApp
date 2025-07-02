@@ -26,10 +26,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import org.example.appbbmges.data.Repository
 import org.example.appbbmges.navigation.SimpleNavController
 
 @Composable
-fun FranquiciasScreen(navController: SimpleNavController) {
+fun FranquiciasScreen(navController: SimpleNavController, repository: Repository) {
     var selectedZona by remember { mutableStateOf<Zona?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var showActiveOnly by remember { mutableStateOf(false) }

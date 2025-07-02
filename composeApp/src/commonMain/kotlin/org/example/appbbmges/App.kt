@@ -94,8 +94,8 @@ fun App(databaseDriverFactory: DatabaseDriverFactory) {
                                     .background(Color(0xFFF8F8F8))
                             ) {
                                 when (currentScreen) {
-                                    is Screen.Dashboard -> DashboardScreen(navController = navController)
-                                    is Screen.Franquicias -> FranquiciasScreen(navController = navController)
+                                    is Screen.Dashboard -> DashboardScreen(navController = navController, repository = repository)
+                                    is Screen.Franquicias -> FranquiciasScreen(navController = navController, repository = repository)
                                     is Screen.Usuarios -> UsuariosScreen(navController = navController, repository = repository)
                                     is Screen.DisciplinasHorarios -> DisciplinasHorariosScreen(navController = navController, repository = repository)
                                     is Screen.Productos -> ProductosScreen(navController = navController)

@@ -26,7 +26,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.input.pointer.pointerInput
-import kotlinx.coroutines.launch
 import kotlin.math.min
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -34,11 +33,57 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.style.TextAlign
+import org.example.appbbmges.data.Repository
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlinx.coroutines.launch
 
 @Composable
-fun DashboardScreen(navController: SimpleNavController) {
+fun DashboardScreen(navController: SimpleNavController, repository: Repository) {
+    // Obtener los datos del Repository
+    var studentCount by remember { mutableStateOf(0L) }
+    var teacherCount by remember { mutableStateOf(0L) }
+    var franchiseeCount by remember { mutableStateOf(0L) }
+    var trialClassCount by remember { mutableStateOf(0L) }
+    var administrativeCount by remember { mutableStateOf(0L) }
+
+    // Coroutine scope para refrescar datos
+    val coroutineScope = rememberCoroutineScope()
+
+    // Función para refrescar todos los conteos
+    fun refreshCounts() {
+        coroutineScope.launch {
+            studentCount = repository.getStudentCount()
+            teacherCount = repository.getTeacherCount()
+            franchiseeCount = repository.getFranchiseeCount()
+            trialClassCount = repository.getTrialClassCount()
+            administrativeCount = repository.getAdministrativeCount()
+        }
+    }
+
+    // Cargar los datos al iniciar
+    LaunchedEffect(Unit) {
+        refreshCounts()
+    }
+
+    // Escuchar cambios en la base de datos para TrialClassEntity
+    LaunchedEffect(repository) {
+        // Simulación de escucha de cambios (esto dependerá del driver de base de datos)
+        // En un entorno real, podrías usar Flow o un mecanismo de notificación de la base de datos
+        while (true) {
+            kotlinx.coroutines.delay(1000) // Refrescar cada segundo
+            val newTrialClassCount = repository.getTrialClassCount()
+            if (newTrialClassCount != trialClassCount) {
+                trialClassCount = newTrialClassCount
+                // Opcional: Refrescar otros conteos si es necesario
+                studentCount = repository.getStudentCount()
+                teacherCount = repository.getTeacherCount()
+                franchiseeCount = repository.getFranchiseeCount()
+                administrativeCount = repository.getAdministrativeCount()
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -52,33 +97,40 @@ fun DashboardScreen(navController: SimpleNavController) {
         ) {
             StatCard(
                 icon = Icons.Outlined.People,
-                title = "1259",
-                subtitle = "Total de Usuarios",
+                title = studentCount.toString(),
+                subtitle = "Total de Alumnos",
                 backgroundColor = Color(0xFFFBACB9),
                 modifier = Modifier.weight(1f)
             )
 
             StatCard(
-                icon = Icons.Outlined.Business,
-                title = "23",
-                subtitle = "Total de Maestros",
+                icon = Icons.Outlined.School,
+                title = teacherCount.toString(),
+                subtitle = "Total de Profesores",
                 backgroundColor = Color(0xFFFFE4B5),
                 modifier = Modifier.weight(1f)
             )
 
             StatCard(
                 icon = Icons.Outlined.PersonAdd,
-                title = "123",
-                subtitle = "Nuevos Usuarios",
+                title = trialClassCount.toString(),
+                subtitle = "Nuevos Registros",
                 backgroundColor = Color(0xFFADD8E6),
                 modifier = Modifier.weight(1f)
             )
 
-            EventCard(
-                title = "Próximo Evento",
-                subtitle = "de Baby Ballet Marbet®",
-                buttonText = "Eventos",
-                onButtonClick = { },
+            StatCard(
+                icon = Icons.Outlined.Business,
+                title = franchiseeCount.toString(),
+                subtitle = "Total de Franquiciatarios",
+                backgroundColor = Color(0xFF90EE90),
+                modifier = Modifier.weight(1f)
+            )
+
+            StatCard(
+                icon = Icons.Outlined.Work,
+                title = administrativeCount.toString(),
+                subtitle = "Total de Administrativos",
                 backgroundColor = Color(0xFF9370DB),
                 modifier = Modifier.weight(1f)
             )
@@ -91,12 +143,11 @@ fun DashboardScreen(navController: SimpleNavController) {
             EmptyCard(
                 modifier = Modifier.weight(1f).fillMaxHeight()
             ) {
-
                 val genderData = listOf(
                     Pair("Niños", 60f),
                     Pair("Niñas", 40f)
                 )
-                val colors = listOf(Color(0xFFADD8E6), Color(0xFFFBACB9)) // Colores del dashboard
+                val colors = listOf(Color(0xFFADD8E6), Color(0xFFFBACB9))
                 var selectedSlice by remember { mutableStateOf(-1) }
 
                 Column(
@@ -199,7 +250,6 @@ fun BirthdayContent() {
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Título "Cumpleaños" en la parte superior
         Text(
             text = "Cumpleaños",
             style = MaterialTheme.typography.titleMedium,
@@ -208,7 +258,6 @@ fun BirthdayContent() {
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // Contenido principal del cumpleaños
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -225,7 +274,6 @@ fun BirthdayContent() {
                 )
                 .padding(16.dp)
         ) {
-            // Flores decorativas de fondo
             DecorativeFlowers()
 
             Column(
@@ -233,7 +281,6 @@ fun BirthdayContent() {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Título "Feliz Cumpleaños" con efecto 3D
                 Text(
                     text = "Feliz Cumpleaños",
                     fontSize = 20.sp,
@@ -252,7 +299,6 @@ fun BirthdayContent() {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Imagen del bebé (placeholder circular)
                 Box(
                     modifier = Modifier
                         .size(80.dp)
@@ -262,7 +308,6 @@ fun BirthdayContent() {
                         .padding(4.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Placeholder para la imagen del bebé
                     Icon(
                         imageVector = Icons.Outlined.Face,
                         contentDescription = "Bebé",
@@ -273,7 +318,6 @@ fun BirthdayContent() {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Nombre
                 Text(
                     text = "Ana Luisa Galvan Ruiz",
                     fontSize = 16.sp,
@@ -283,7 +327,6 @@ fun BirthdayContent() {
                     style = MaterialTheme.typography.titleMedium
                 )
 
-                // Fecha
                 Text(
                     text = "25 de Agosto de 2008",
                     fontSize = 14.sp,
@@ -299,13 +342,11 @@ fun BirthdayContent() {
 
 @Composable
 fun DecorativeFlowers() {
-    // Flores decorativas en las esquinas
     Canvas(modifier = Modifier.fillMaxSize()) {
         val flowerSize = 20.dp.toPx()
         val petalColor = Color(0xFFFFFFFF).copy(alpha = 0.6f)
         val centerColor = Color(0xFFE91E63).copy(alpha = 0.8f)
 
-        // Flor superior izquierda
         drawFlower(
             center = Offset(30f, 30f),
             petalSize = flowerSize * 0.6f,
@@ -313,7 +354,6 @@ fun DecorativeFlowers() {
             centerColor = centerColor
         )
 
-        // Flor superior derecha
         drawFlower(
             center = Offset(size.width - 30f, 40f),
             petalSize = flowerSize * 0.8f,
@@ -321,7 +361,6 @@ fun DecorativeFlowers() {
             centerColor = centerColor
         )
 
-        // Flor inferior izquierda
         drawFlower(
             center = Offset(40f, size.height - 40f),
             petalSize = flowerSize * 0.7f,
@@ -329,7 +368,6 @@ fun DecorativeFlowers() {
             centerColor = centerColor
         )
 
-        // Flor inferior derecha
         drawFlower(
             center = Offset(size.width - 40f, size.height - 30f),
             petalSize = flowerSize * 0.5f,
@@ -337,7 +375,6 @@ fun DecorativeFlowers() {
             centerColor = centerColor
         )
 
-        // Flores adicionales más pequeñas
         drawFlower(
             center = Offset(size.width * 0.8f, size.height * 0.3f),
             petalSize = flowerSize * 0.4f,
@@ -360,7 +397,6 @@ fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFlower(
     petalColor: Color,
     centerColor: Color
 ) {
-    // Dibujar 5 pétalos
     for (i in 0..4) {
         val angle = (i * 72f) * (PI / 180f).toFloat()
         val petalCenter = Offset(
@@ -375,7 +411,6 @@ fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFlower(
         )
     }
 
-    // Dibujar centro de la flor
     drawCircle(
         color = centerColor,
         radius = petalSize * 0.3f,
@@ -412,7 +447,6 @@ fun AnimatedPieChart(
     }
 
     LaunchedEffect(selectedSlice) {
-        // Resetear todas las escalas
         sliceScales.forEachIndexed { index, animatable ->
             coroutineScope.launch {
                 animatable.animateTo(
@@ -442,7 +476,7 @@ fun AnimatedPieChart(
                     for (i in data.indices) {
                         val sweepAngle = animatedValues[i].value * 360f
                         if (angle >= startAngle && angle < startAngle + sweepAngle) {
-                            newSelectedSlice = if (selectedSlice == i) -1 else i // Toggle selección
+                            newSelectedSlice = if (selectedSlice == i) -1 else i
                             break
                         }
                         startAngle += sweepAngle
@@ -564,50 +598,6 @@ fun StatCard(
                 fontSize = 14.sp,
                 color = Color.DarkGray
             )
-        }
-    }
-}
-
-@Composable
-fun EventCard(
-    title: String,
-    subtitle: String,
-    buttonText: String,
-    onButtonClick: () -> Unit,
-    backgroundColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.height(120.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier.padding(16.dp).align(Alignment.TopStart)
-            ) {
-                Text(
-                    text = title,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-
-                Text(
-                    text = subtitle,
-                    fontSize = 14.sp,
-                    color = Color.White
-                )
-            }
-
-            Button(
-                onClick = onButtonClick,
-                modifier = Modifier.padding(16.dp).align(Alignment.BottomStart),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text(text = buttonText, color = backgroundColor)
-            }
         }
     }
 }

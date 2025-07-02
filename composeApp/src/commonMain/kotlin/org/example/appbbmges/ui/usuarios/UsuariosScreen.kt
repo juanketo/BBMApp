@@ -23,7 +23,6 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
 import org.example.appbbmges.AdministrativeEntity
 import org.example.appbbmges.FranchiseeEntity
 import org.example.appbbmges.StudentEntity
@@ -196,6 +195,34 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
                 }
                 userToEdit != null -> {
                     Text("Función de edición no implementada aún")
+                }
+                selectedProfile != null -> {
+                    when (selectedProfile!!.first) {
+                        "Alumno" -> ViewAlumnoScreen(
+                            studentId = selectedProfile!!.second,
+                            repository = repository,
+                            navController = navController,
+                            onDismiss = { selectedProfile = null }
+                        )
+                        "Profesor" -> ViewProfesorScreen(
+                            teacherId = selectedProfile!!.second,
+                            repository = repository,
+                            navController = navController,
+                            onDismiss = { selectedProfile = null }
+                        )
+                        "Franquiciatario" -> ViewFranquiciatarioScreen(
+                            franchiseeId = selectedProfile!!.second,
+                            repository = repository,
+                            navController = navController,
+                            onDismiss = { selectedProfile = null }
+                        )
+                        "Administrativo" -> ViewAdministrativoScreen(
+                            administrativeId = selectedProfile!!.second,
+                            repository = repository,
+                            navController = navController,
+                            onDismiss = { selectedProfile = null }
+                        )
+                    }
                 }
                 else -> {
                     Column(
@@ -636,74 +663,6 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
                     }
                 }
             }
-        }
-
-        // Diálogo de perfil optimizado
-        if (selectedProfile != null) {
-            val (userType, userId) = selectedProfile!!
-            AlertDialog(
-                onDismissRequest = { selectedProfile = null },
-                properties = DialogProperties(
-                    usePlatformDefaultWidth = false,
-                    dismissOnBackPress = true,
-                    dismissOnClickOutside = true
-                ),
-                modifier = Modifier
-                    .fillMaxWidth(0.95f)
-                    .fillMaxHeight(0.9f),
-                title = {
-                    Text(
-                        text = when (userType) {
-                            "Alumno" -> "Perfil de Alumno"
-                            "Profesor" -> "Perfil de Profesor"
-                            "Franquiciatario" -> "Perfil de Franquiciatario"
-                            "Administrativo" -> "Perfil de Administrativo"
-                            else -> "Perfil"
-                        },
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                text = {
-                    when (userType) {
-                        "Alumno" -> ViewAlumnoScreen(
-                            studentId = userId,
-                            repository = repository,
-                            navController = navController,
-                            onDismiss = { selectedProfile = null }
-                        )
-                        "Profesor" -> ViewProfesorScreen(
-                            teacherId = userId,
-                            repository = repository,
-                            navController = navController,
-                            onDismiss = { selectedProfile = null }
-                        )
-                        "Franquiciatario" -> ViewFranquiciatarioScreen(
-                            franchiseeId = userId,
-                            repository = repository,
-                            navController = navController,
-                            onDismiss = { selectedProfile = null }
-                        )
-                        "Administrativo" -> ViewAdministrativoScreen(
-                            administrativeId = userId,
-                            repository = repository,
-                            navController = navController,
-                            onDismiss = { selectedProfile = null }
-                        )
-                    }
-                },
-                confirmButton = {},
-                dismissButton = {
-                    TextButton(
-                        onClick = { selectedProfile = null },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = AppColors.Primary
-                        )
-                    ) {
-                        Text("Cerrar")
-                    }
-                }
-            )
         }
 
         // Diálogo de eliminación

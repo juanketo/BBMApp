@@ -1,5 +1,6 @@
 package org.example.appbbmges.ui.usuarios.viewusuarios
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,6 +25,14 @@ import org.example.appbbmges.navigation.SimpleNavController
 import org.example.appbbmges.StudentEntity
 import org.example.appbbmges.StudentAuthorizedAdultEntity
 
+object AppColors {
+    val Primary = Color(0xFF00B4D8)
+    val Background = Color(0xFFF8F9FA)
+    val OnPrimary = Color.White
+    val TextColor = Color(0xFF333333)
+    val BackgroundOverlay = Color(0xFF1C1C1C).copy(alpha = 0.7f)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ViewAlumnoScreen(
@@ -41,47 +50,64 @@ fun ViewAlumnoScreen(
 
     var selectedSection by remember { mutableStateOf("personal") }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Regresar") },
-                navigationIcon = {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Barra superior con título y botones
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.White,
+            shadowElevation = 4.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Regresar")
-                    }
-                },
-                actions = {
-                    Button(
-                        onClick = { /* Acción de exportar */ },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Transparent,
-                            contentColor = Color(0xFF6366F1)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Regresar",
+                            tint = AppColors.Primary
                         )
-                    ) {
-                        Text("Export")
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Perfil de Alumno",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = AppColors.Primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Row {
+                    OutlinedButton(
+                        onClick = { /* Acción de exportar */ },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF6366F1)
+                        ),
+                        border = BorderStroke(1.dp, Color(0xFF6366F1))
+                    ) {
+                        Text("Exportar")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { /* Acción de guardar */ },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF6366F1)
-                        ),
-                        modifier = Modifier.padding(start = 8.dp)
+                        )
                     ) {
-                        Text("Save", color = Color.White)
+                        Text("Guardar", color = Color.White)
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = Color(0xFF1F2937)
-                )
-            )
-        },
-        containerColor = Color(0xFFF9FAFB)
-    ) { paddingValues ->
+                }
+            }
+        }
+
+        // Contenido principal
         student?.let { student ->
             Row(
                 modifier = Modifier
-                    .padding(paddingValues)
                     .fillMaxSize()
                     .padding(24.dp),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
@@ -187,12 +213,12 @@ fun ViewAlumnoScreen(
                         content = {
                             FormGrid {
                                 FormField(
-                                    label = "First Name",
+                                    label = "Nombre",
                                     value = student.first_name ?: "",
                                     modifier = Modifier.weight(1f)
                                 )
                                 FormField(
-                                    label = "Last Name",
+                                    label = "Apellidos",
                                     value = "${student.last_name_paternal ?: ""} ${student.last_name_maternal ?: ""}".trim(),
                                     modifier = Modifier.weight(1f)
                                 )
@@ -200,12 +226,12 @@ fun ViewAlumnoScreen(
 
                             FormGrid {
                                 FormField(
-                                    label = "Status",
+                                    label = "Estado",
                                     value = "Activo",
                                     modifier = Modifier.weight(1f)
                                 )
                                 FormField(
-                                    label = "Date of Birth",
+                                    label = "Fecha de Nacimiento",
                                     value = student.birth_date ?: "",
                                     modifier = Modifier.weight(1f)
                                 )
@@ -213,12 +239,12 @@ fun ViewAlumnoScreen(
 
                             FormGrid {
                                 FormField(
-                                    label = "Email Address",
+                                    label = "Correo Electrónico",
                                     value = student.email ?: "",
                                     modifier = Modifier.weight(1f)
                                 )
                                 FormField(
-                                    label = "Phone Number",
+                                    label = "Teléfono",
                                     value = student.phone ?: "",
                                     modifier = Modifier.weight(1f)
                                 )
@@ -238,12 +264,12 @@ fun ViewAlumnoScreen(
                         content = {
                             FormGrid {
                                 FormField(
-                                    label = "Address 1",
+                                    label = "Dirección",
                                     value = student.address_street ?: "",
                                     modifier = Modifier.weight(1f)
                                 )
                                 FormField(
-                                    label = "City",
+                                    label = "Ciudad",
                                     value = "", // Ajusta según tu modelo
                                     modifier = Modifier.weight(1f)
                                 )
@@ -251,12 +277,12 @@ fun ViewAlumnoScreen(
 
                             FormGrid {
                                 FormField(
-                                    label = "Country",
+                                    label = "País",
                                     value = student.nationality ?: "",
                                     modifier = Modifier.weight(1f)
                                 )
                                 FormField(
-                                    label = "ZIP Code",
+                                    label = "Código Postal",
                                     value = student.address_zip ?: "",
                                     modifier = Modifier.weight(1f)
                                 )
