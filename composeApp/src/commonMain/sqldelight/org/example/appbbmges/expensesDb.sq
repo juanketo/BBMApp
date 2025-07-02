@@ -884,3 +884,8 @@ DELETE FROM TeacherReportEntity WHERE id = ?;
 
 teacherReportCount:
 SELECT COUNT(*) FROM TeacherReportEntity;
+
+-- Count active franchises (is_new = 0 AND active = 1)
+activeBranchesCount:
+SELECT COUNT(*) FROM FranchiseEntity
+WHERE is_new = 0 AND active = 1;

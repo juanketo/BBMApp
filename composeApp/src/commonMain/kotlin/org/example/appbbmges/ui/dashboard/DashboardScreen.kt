@@ -43,9 +43,9 @@ fun DashboardScreen(navController: SimpleNavController, repository: Repository) 
     // Obtener los datos del Repository
     var studentCount by remember { mutableStateOf(0L) }
     var teacherCount by remember { mutableStateOf(0L) }
-    var franchiseeCount by remember { mutableStateOf(0L) }
-    var trialClassCount by remember { mutableStateOf(0L) }
-    var administrativeCount by remember { mutableStateOf(0L) }
+    var activeBranchesCount by remember { mutableStateOf(0L) }
+    var maleCount by remember { mutableStateOf(0L) }
+    var femaleCount by remember { mutableStateOf(0L) }
 
     // Coroutine scope para refrescar datos
     val coroutineScope = rememberCoroutineScope()
@@ -55,9 +55,12 @@ fun DashboardScreen(navController: SimpleNavController, repository: Repository) 
         coroutineScope.launch {
             studentCount = repository.getStudentCount()
             teacherCount = repository.getTeacherCount()
-            franchiseeCount = repository.getFranchiseeCount()
-            trialClassCount = repository.getTrialClassCount()
-            administrativeCount = repository.getAdministrativeCount()
+            activeBranchesCount = repository.getActiveBranchesCount()
+
+            // Obtener conteos reales de género
+            val genders = repository.getStudentsByGender()
+            maleCount = genders.first
+            femaleCount = genders.second
         }
     }
 
@@ -66,23 +69,24 @@ fun DashboardScreen(navController: SimpleNavController, repository: Repository) 
         refreshCounts()
     }
 
-    // Escuchar cambios en la base de datos para TrialClassEntity
+    // Refrescar datos periódicamente
     LaunchedEffect(repository) {
-        // Simulación de escucha de cambios (esto dependerá del driver de base de datos)
-        // En un entorno real, podrías usar Flow o un mecanismo de notificación de la base de datos
         while (true) {
-            kotlinx.coroutines.delay(1000) // Refrescar cada segundo
-            val newTrialClassCount = repository.getTrialClassCount()
-            if (newTrialClassCount != trialClassCount) {
-                trialClassCount = newTrialClassCount
-                // Opcional: Refrescar otros conteos si es necesario
-                studentCount = repository.getStudentCount()
-                teacherCount = repository.getTeacherCount()
-                franchiseeCount = repository.getFranchiseeCount()
-                administrativeCount = repository.getAdministrativeCount()
-            }
+            kotlinx.coroutines.delay(5000) // Refrescar cada 5 segundos
+            refreshCounts()
         }
     }
+
+    // Calcular porcentajes reales
+    val totalStudents = maleCount + femaleCount
+    val malePercentage = if (totalStudents > 0) (maleCount.toFloat() / totalStudents) * 100 else 0f
+    val femalePercentage = if (totalStudents > 0) (femaleCount.toFloat() / totalStudents) * 100 else 0f
+
+    // Datos para la gráfica (mostrando "Niños/Niñas" pero con datos reales)
+    val genderData = listOf(
+        Pair("Niños", malePercentage),  // Datos de "masculino"
+        Pair("Niñas", femalePercentage) // Datos de "femenino"
+    )
 
     Column(
         modifier = Modifier
@@ -112,26 +116,10 @@ fun DashboardScreen(navController: SimpleNavController, repository: Repository) 
             )
 
             StatCard(
-                icon = Icons.Outlined.PersonAdd,
-                title = trialClassCount.toString(),
-                subtitle = "Nuevos Registros",
-                backgroundColor = Color(0xFFADD8E6),
-                modifier = Modifier.weight(1f)
-            )
-
-            StatCard(
-                icon = Icons.Outlined.Business,
-                title = franchiseeCount.toString(),
-                subtitle = "Total de Franquiciatarios",
-                backgroundColor = Color(0xFF90EE90),
-                modifier = Modifier.weight(1f)
-            )
-
-            StatCard(
-                icon = Icons.Outlined.Work,
-                title = administrativeCount.toString(),
-                subtitle = "Total de Administrativos",
-                backgroundColor = Color(0xFF9370DB),
+                icon = Icons.Outlined.Store,
+                title = activeBranchesCount.toString(),
+                subtitle = "Sucursales Activas",
+                backgroundColor = Color(0xFFB8E6B8),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -143,10 +131,6 @@ fun DashboardScreen(navController: SimpleNavController, repository: Repository) 
             EmptyCard(
                 modifier = Modifier.weight(1f).fillMaxHeight()
             ) {
-                val genderData = listOf(
-                    Pair("Niños", 60f),
-                    Pair("Niñas", 40f)
-                )
                 val colors = listOf(Color(0xFFADD8E6), Color(0xFFFBACB9))
                 var selectedSlice by remember { mutableStateOf(-1) }
 
@@ -201,7 +185,7 @@ fun DashboardScreen(navController: SimpleNavController, repository: Repository) 
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "Niños: 60%",
+                                text = "Niños: ${malePercentage.toInt()}%",
                                 fontSize = if (selectedSlice == 0) 15.sp else 13.sp,
                                 color = if (selectedSlice == 0) Color.Black else Color.DarkGray,
                                 fontWeight = if (selectedSlice == 0) FontWeight.Bold else FontWeight.Normal
@@ -225,7 +209,7 @@ fun DashboardScreen(navController: SimpleNavController, repository: Repository) 
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "Niñas: 40%",
+                                text = "Niñas: ${femalePercentage.toInt()}%",
                                 fontSize = if (selectedSlice == 1) 15.sp else 13.sp,
                                 color = if (selectedSlice == 1) Color.Black else Color.DarkGray,
                                 fontWeight = if (selectedSlice == 1) FontWeight.Bold else FontWeight.Normal
@@ -439,7 +423,7 @@ fun AnimatedPieChart(
         data.forEachIndexed { index, (_, value) ->
             coroutineScope.launch {
                 animatedValues[index].animateTo(
-                    targetValue = value / total,
+                    targetValue = if (total > 0) value / total else 0f,
                     animationSpec = tween(durationMillis = 1000, delayMillis = index * 100)
                 )
             }

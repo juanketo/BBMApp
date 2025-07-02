@@ -839,6 +839,17 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.teacherReportCount().executeAsOne()
     }
 
+    fun getActiveBranchesCount(): Long {
+        return database.expensesDbQueries.activeBranchesCount().executeAsOne()
+    }
+
+    fun getStudentsByGender(): Pair<Long, Long> {
+        val students = database.expensesDbQueries.studentSelectAll().executeAsList()
+        val maleCount = students.count { it.gender.equals("masculino", ignoreCase = true) }.toLong()
+        val femaleCount = students.count { it.gender.equals("femenino", ignoreCase = true) }.toLong()
+        return Pair(maleCount, femaleCount)
+    }
+
     fun initializeData() {
         val existingUsers = getUserCount()
         if (existingUsers == 0L) {
