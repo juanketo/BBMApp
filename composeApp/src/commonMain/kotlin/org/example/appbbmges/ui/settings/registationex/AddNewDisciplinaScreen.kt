@@ -14,17 +14,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import appbbmges.composeapp.generated.resources.Res
 import appbbmges.composeapp.generated.resources.logoSystem
 import org.example.appbbmges.data.Repository
@@ -50,48 +48,6 @@ sealed class DisciplinaFormState {
     object Success : DisciplinaFormState()
 }
 
-data class DisciplinaValidationResult(
-    val isValid: Boolean,
-    val nameError: String? = null,
-    val levelError: String? = null
-)
-
-class DisciplinaValidator {
-    companion object {
-        fun validateDisciplina(
-            name: String,
-            selectedLevel: LevelEntity?,
-            existingDisciplines: List<DisciplineSelectAll>,
-            allLevels: List<LevelEntity>
-        ): DisciplinaValidationResult {
-            val nameError = when {
-                name.isEmpty() -> "El nombre de la disciplina es obligatorio"
-                name.length < 3 -> "El nombre debe tener al menos 3 caracteres"
-                name.length > 50 -> "El nombre no puede exceder 50 caracteres"
-                !name.matches(Regex("^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$")) -> "El nombre solo puede contener letras y espacios"
-                name.trim() != name -> "El nombre no puede empezar o terminar con espacios"
-                name.contains(Regex("\\s{2,}")) -> "El nombre no puede contener espacios consecutivos"
-                else -> null
-            }
-
-            val levelError = when {
-                selectedLevel == null -> "Debe seleccionar un nivel"
-                allLevels.isEmpty() -> "No hay niveles disponibles"
-                existingDisciplines.any {
-                    it.name.trim().startsWith(name.trim(), ignoreCase = true) && it.level_id == selectedLevel.id
-                } -> "La combinación de disciplina '${name.trim()}' y nivel '${selectedLevel.name}' ya existe"
-                else -> null
-            }
-
-            return DisciplinaValidationResult(
-                isValid = nameError == null && levelError == null,
-                nameError = nameError,
-                levelError = levelError
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddNewDisciplinaScreen(
@@ -106,22 +62,46 @@ fun AddNewDisciplinaScreen(
     var name by remember { mutableStateOf("") }
     var selectedLevel by remember { mutableStateOf<LevelEntity?>(null) }
     var formState by remember { mutableStateOf<DisciplinaFormState>(DisciplinaFormState.Idle) }
-    var validationResult by remember { mutableStateOf(DisciplinaValidationResult(true)) }
     var expanded by remember { mutableStateOf(false) }
+    var nameError by remember { mutableStateOf<String?>(null) }
+    var levelError by remember { mutableStateOf<String?>(null) }
 
     val allLevels = remember { mutableStateOf<List<LevelEntity>>(emptyList()) }
     val existingDisciplines = remember { mutableStateOf<List<DisciplineSelectAll>>(emptyList()) }
 
+    // Cargar datos iniciales
     LaunchedEffect(Unit) {
-        allLevels.value = repository.getAllLevels()
-        existingDisciplines.value = repository.getAllDisciplines()
+        try {
+            allLevels.value = repository.getAllLevels()
+            existingDisciplines.value = repository.getAllDisciplines()
+            if (allLevels.value.isEmpty()) {
+                formState = DisciplinaFormState.Error("No hay niveles disponibles. Crea niveles primero.")
+            }
+        } catch (e: Exception) {
+            formState = DisciplinaFormState.Error("Error al cargar datos: ${e.message}")
+        }
     }
 
-    // Función de validación
+    // Función de validación mejorada
     fun validateForm(): Boolean {
-        val validation = DisciplinaValidator.validateDisciplina(name, selectedLevel, existingDisciplines.value, allLevels.value)
-        validationResult = validation
-        return validation.isValid
+        nameError = when {
+            name.isEmpty() -> "El nombre es obligatorio"
+            name.length < 3 -> "Mínimo 3 caracteres"
+            name.length > 50 -> "Máximo 50 caracteres"
+            !name.matches(Regex("^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$")) -> "Solo letras y espacios"
+            else -> null
+        }
+
+        levelError = when {
+            selectedLevel == null -> "Selecciona un nivel"
+            allLevels.value.isEmpty() -> "No hay niveles disponibles"
+            existingDisciplines.value.any {
+                it.name.equals(name.trim(), ignoreCase = true) && it.level_id == selectedLevel!!.id
+            } -> "Ya existe esta disciplina en ${selectedLevel!!.name}"
+            else -> null
+        }
+
+        return nameError == null && levelError == null
     }
 
     // Función para proceder al siguiente paso
@@ -136,17 +116,18 @@ fun AddNewDisciplinaScreen(
                 formState = DisciplinaFormState.Loading
                 try {
                     selectedLevel?.id?.let { levelId ->
-                        repository.insertDisciplineWithLevels(name.trim(), listOf(levelId))
+                        repository.insertDiscipline(name.trim(), levelId)
                     }
                     formState = DisciplinaFormState.Success
                     onDismiss()
                 } catch (e: Exception) {
-                    formState = DisciplinaFormState.Error("Error al registrar la disciplina: ${e.message}")
+                    formState = DisciplinaFormState.Error("Error al registrar: ${e.message}")
                 }
             }
         }
     }
 
+    // UI Principal
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -162,9 +143,7 @@ fun AddNewDisciplinaScreen(
             elevation = CardDefaults.cardElevation(4.dp),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize()
-            ) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 BackgroundLogo()
 
                 Column(
@@ -173,54 +152,222 @@ fun AddNewDisciplinaScreen(
                         .padding(24.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    FormHeader(currentStep)
+                    // Header
+                    val progress by animateFloatAsState(
+                        targetValue = when (currentStep) {
+                            DisciplinaFormStep.INFO -> 0.5f
+                            DisciplinaFormStep.CONFIRMATION -> 1f
+                        },
+                        animationSpec = tween(300),
+                        label = "progress"
+                    )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Registro de Disciplina",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
 
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = AppColors.Primary
+                    )
+
+                    Text(
+                        text = when (currentStep) {
+                            DisciplinaFormStep.INFO -> "Paso 1: Información"
+                            DisciplinaFormStep.CONFIRMATION -> "Paso 2: Confirmación"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Contenido del formulario
                     when (currentStep) {
                         DisciplinaFormStep.INFO -> {
-                            InfoContent(
-                                name = name,
-                                selectedLevel = selectedLevel,
-                                allLevels = allLevels.value,
-                                validationResult = validationResult,
-                                formState = formState,
-                                expanded = expanded,
-                                onNameChange = {
+                            // Campo de nombre
+                            OutlinedTextField(
+                                value = name,
+                                onValueChange = {
                                     name = it
-                                    if (validationResult.nameError != null) {
-                                        validationResult = validationResult.copy(nameError = null)
+                                    nameError = null
+                                },
+                                label = { Text("Nombre de la disciplina") },
+                                isError = nameError != null,
+                                supportingText = {
+                                    nameError?.let {
+                                        Text(it, color = MaterialTheme.colorScheme.error)
                                     }
                                 },
-                                onLevelChange = {
-                                    selectedLevel = it
-                                    if (validationResult.levelError != null) {
-                                        validationResult = validationResult.copy(levelError = null)
-                                    }
-                                },
-                                onExpandedChange = { expanded = it },
-                                onProceedToNext = { proceedToNext() },
-                                focusManager = focusManager
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Text,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                )
                             )
+
+                            Spacer(Modifier.height(16.dp))
+
+                            // Selector de nivel
+                            if (allLevels.value.isEmpty()) {
+                                Text(
+                                    text = "⚠️ No hay niveles disponibles. Registra niveles primero.",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            } else {
+                                ExposedDropdownMenuBox(
+                                    expanded = expanded,
+                                    onExpandedChange = { expanded = it }
+                                ) {
+                                    OutlinedTextField(
+                                        readOnly = true,
+                                        value = selectedLevel?.name ?: "Seleccionar nivel",
+                                        onValueChange = {},
+                                        label = { Text("Nivel") },
+                                        trailingIcon = {
+                                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                                expanded = expanded
+                                            )
+                                        },
+                                        isError = levelError != null,
+                                        supportingText = {
+                                            levelError?.let {
+                                                Text(it, color = MaterialTheme.colorScheme.error)
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .menuAnchor()
+                                    )
+
+                                    ExposedDropdownMenu(
+                                        expanded = expanded,
+                                        onDismissRequest = { expanded = false }
+                                    ) {
+                                        allLevels.value.forEach { level ->
+                                            DropdownMenuItem(
+                                                text = { Text(level.name) },
+                                                onClick = {
+                                                    selectedLevel = level
+                                                    levelError = null
+                                                    expanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
+
                         DisciplinaFormStep.CONFIRMATION -> {
-                            ConfirmationContent(
-                                name = name,
-                                selectedLevel = selectedLevel,
-                                formState = formState
-                            )
+                            // Confirmación
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFF5F5F5)
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "Confirmar Registro",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    Divider(color = AppColors.Primary.copy(alpha = 0.3f))
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Disciplina:", fontWeight = FontWeight.Medium)
+                                        Text(name.trim(), fontWeight = FontWeight.Bold)
+                                    }
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Nivel:", fontWeight = FontWeight.Medium)
+                                        Text(selectedLevel?.name ?: "Ninguno", fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(Modifier.weight(1f))
 
-                    NavigationButtons(
-                        currentStep = currentStep,
-                        formState = formState,
-                        onDismiss = onDismiss,
-                        onPrevious = { currentStep = DisciplinaFormStep.INFO },
-                        onNext = { proceedToNext() }
-                    )
+                    // Mensajes de error globales
+                    if (formState is DisciplinaFormState.Error) {
+                        Text(
+                            text = (formState as DisciplinaFormState.Error).message,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+
+                    // Botones de navegación
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFff8abe)
+                            )
+                        ) {
+                            Text("Cancelar")
+                        }
+
+                        if (currentStep == DisciplinaFormStep.CONFIRMATION) {
+                            Button(
+                                onClick = { currentStep = DisciplinaFormStep.INFO },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFff8abe)
+                                )
+                            ) {
+                                Text("Atrás")
+                            }
+                        }
+
+                        Button(
+                            onClick = { proceedToNext() },
+                            modifier = Modifier.weight(1f),
+                            enabled = formState !is DisciplinaFormState.Loading,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AppColors.Primary
+                            )
+                        ) {
+                            if (formState is DisciplinaFormState.Loading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text(
+                                    when (currentStep) {
+                                        DisciplinaFormStep.INFO -> "Siguiente"
+                                        DisciplinaFormStep.CONFIRMATION -> "Registrar"
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -235,370 +382,12 @@ private fun BackgroundLogo() {
     ) {
         Image(
             painter = painterResource(Res.drawable.logoSystem),
-            contentDescription = "Logo de fondo",
+            contentDescription = null,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(40.dp)
-                .semantics {
-                    contentDescription = "Logo de fondo de la aplicación"
-                },
-            alpha = 0.08f,
+                .alpha(0.08f),
             contentScale = ContentScale.Fit
         )
-    }
-}
-
-@Composable
-private fun FormHeader(currentStep: DisciplinaFormStep) {
-    val animatedProgress by animateFloatAsState(
-        targetValue = when (currentStep) {
-            DisciplinaFormStep.INFO -> 0.5f
-            DisciplinaFormStep.CONFIRMATION -> 1.0f
-        },
-        animationSpec = tween(durationMillis = 300),
-        label = "progress_animation"
-    )
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = "Registro de Disciplina",
-            style = MaterialTheme.typography.headlineSmall,
-            color = AppColors.TextColor,
-            fontWeight = FontWeight.Bold
-        )
-
-        LinearProgressIndicator(
-            progress = { animatedProgress },
-            modifier = Modifier.fillMaxWidth(),
-            color = AppColors.Primary
-        )
-
-        Text(
-            text = when (currentStep) {
-                DisciplinaFormStep.INFO -> "Paso 1: Información y Nivel"
-                DisciplinaFormStep.CONFIRMATION -> "Paso 2: Confirmación"
-            },
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun InfoContent(
-    name: String,
-    selectedLevel: LevelEntity?,
-    allLevels: List<LevelEntity>,
-    validationResult: DisciplinaValidationResult,
-    formState: DisciplinaFormState,
-    expanded: Boolean,
-    onNameChange: (String) -> Unit,
-    onLevelChange: (LevelEntity?) -> Unit,
-    onExpandedChange: (Boolean) -> Unit,
-    onProceedToNext: () -> Unit,
-    focusManager: androidx.compose.ui.focus.FocusManager
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        OutlinedTextField(
-            value = name,
-            onValueChange = onNameChange,
-            label = { Text("Nombre de la Disciplina") },
-            placeholder = { Text("Ej: Danza Árabe, Música, Teatro") },
-            isError = validationResult.nameError != null,
-            supportingText = {
-                validationResult.nameError?.let {
-                    Text(
-                        text = it,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics {
-                    contentDescription = "Campo para el nombre de la disciplina"
-                },
-            singleLine = true,
-            enabled = formState !is DisciplinaFormState.Loading,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Next
-            ),
-            keyboardActions = KeyboardActions(
-                onNext = {
-                    focusManager.moveFocus(FocusDirection.Down)
-                }
-            ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AppColors.Primary,
-                focusedLabelColor = AppColors.Primary
-            )
-        )
-
-        if (allLevels.isEmpty()) {
-            Text(
-                text = "No hay niveles disponibles. Por favor crea niveles primero.",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall
-            )
-        } else {
-            Box(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = onExpandedChange,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = selectedLevel?.name ?: "Seleccionar nivel",
-                        onValueChange = {},
-                        label = { Text("Nivel") },
-                        isError = validationResult.levelError != null,
-                        supportingText = {
-                            validationResult.levelError?.let {
-                                Text(
-                                    text = it,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor()
-                            .semantics {
-                                contentDescription = "Campo para seleccionar nivel"
-                            },
-                        readOnly = true,
-                        singleLine = true,
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = AppColors.Primary,
-                            focusedLabelColor = AppColors.Primary
-                        ),
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                focusManager.clearFocus()
-                                onProceedToNext()
-                            }
-                        )
-                    )
-
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { onExpandedChange(false) },
-                        modifier = Modifier
-                            .heightIn(max = 200.dp)
-                            .exposedDropdownSize()
-                    ) {
-                        allLevels.forEach { level ->
-                            DropdownMenuItem(
-                                text = { Text("Nivel ${level.name}", style = MaterialTheme.typography.bodyMedium) },
-                                onClick = {
-                                    onLevelChange(level)
-                                    onExpandedChange(false)
-                                },
-                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ConfirmationContent(
-    name: String,
-    selectedLevel: LevelEntity?,
-    formState: DisciplinaFormState
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFFF5F5F5)
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "Confirmar Datos de la Disciplina",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = AppColors.TextColor
-                )
-
-                HorizontalDivider(
-                    color = AppColors.Primary.copy(alpha = 0.3f),
-                    thickness = 1.dp
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Nombre:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = name.trim(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = AppColors.Primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Nivel:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = selectedLevel?.name ?: "Ninguno",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = AppColors.Primary
-                    )
-                }
-            }
-        }
-
-        if (formState is DisciplinaFormState.Error) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    text = formState.message,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun NavigationButtons(
-    currentStep: DisciplinaFormStep,
-    formState: DisciplinaFormState,
-    onDismiss: () -> Unit,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Button(
-            onClick = onDismiss,
-            modifier = Modifier
-                .width(100.dp)
-                .height(40.dp),
-            enabled = formState !is DisciplinaFormState.Loading,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFff8abe),
-                disabledContainerColor = Color(0xFFff8abe).copy(alpha = 0.6f)
-            ),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Text(
-                text = "Cancelar",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White
-            )
-        }
-
-        if (currentStep == DisciplinaFormStep.CONFIRMATION) {
-            Button(
-                onClick = onPrevious,
-                modifier = Modifier
-                    .width(100.dp)
-                    .height(40.dp),
-                enabled = formState !is DisciplinaFormState.Loading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFff8abe),
-                    disabledContainerColor = Color(0xFFff8abe).copy(alpha = 0.6f)
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    text = "Anterior",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        Button(
-            onClick = onNext,
-            enabled = formState !is DisciplinaFormState.Loading,
-            modifier = Modifier
-                .width(110.dp)
-                .height(40.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFff8abe),
-                disabledContainerColor = Color(0xFFff8abe).copy(alpha = 0.6f)
-            ),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            if (formState is DisciplinaFormState.Loading) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "...",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White
-                    )
-                }
-            } else {
-                Text(
-                    text = if (currentStep == DisciplinaFormStep.CONFIRMATION) "Registrar" else "Siguiente",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                )
-            }
-        }
     }
 }
