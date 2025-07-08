@@ -31,10 +31,7 @@ import org.example.appbbmges.LevelEntity
 import org.example.appbbmges.DisciplineSelectAll
 import org.jetbrains.compose.resources.painterResource
 
-data class DisciplinaData(
-    val name: String,
-    val levelId: Long
-)
+// --- Modelos de datos y utilidades ---
 
 enum class DisciplinaFormStep {
     INFO,
@@ -44,9 +41,71 @@ enum class DisciplinaFormStep {
 sealed class DisciplinaFormState {
     object Idle : DisciplinaFormState()
     object Loading : DisciplinaFormState()
-    data class Error(val message: String) : DisciplinaFormState()
+    // El estado Error puede contener una lista de las disciplinas que fallaron la inserción (por si la validación UI falla o hay un race condition)
+    data class Error(val message: String, val failedDisciplines: List<Pair<String, Long>> = emptyList()) : DisciplinaFormState()
     object Success : DisciplinaFormState()
 }
+
+// Clase para los resultados de validación, similar a la de niveles
+data class DisciplinaValidationResult(
+    val isValid: Boolean,
+    val nameError: String? = null,
+    val levelsError: String? = null, // Para indicar si no se seleccionó ningún nivel
+    val duplicateError: String? = null // Para indicar los duplicados
+)
+
+// Función helper para construir el nombre completo de la disciplina (ej. "Danza Mini Grado 1")
+private fun buildDisciplineFullName(baseName: String, levelName: String): String {
+    return "$baseName $levelName".trim()
+}
+
+// Clase para la lógica de validación, similar a NivelValidator
+class DisciplinaValidator {
+    companion object {
+        fun validate(
+            baseName: String,
+            selectedLevelEntities: List<LevelEntity>, // Recibe los objetos LevelEntity para obtener sus nombres
+            existingDisciplines: List<DisciplineSelectAll>
+        ): DisciplinaValidationResult {
+            val nameError = when {
+                baseName.isEmpty() -> "El nombre de la disciplina es obligatorio"
+                baseName.length < 3 -> "Mínimo 3 caracteres"
+                baseName.length > 50 -> "Máximo 50 caracteres"
+                !baseName.matches(Regex("^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$")) -> "Solo letras y espacios (sin números ni caracteres especiales)"
+                else -> null
+            }
+
+            val levelsError = if (selectedLevelEntities.isEmpty()) "Debes seleccionar al menos un nivel" else null
+
+            val duplicateErrors = mutableListOf<String>()
+            if (nameError == null && levelsError == null) { // Solo si el nombre y la selección de niveles son válidos, busca duplicados
+                selectedLevelEntities.forEach { selectedLevel ->
+                    val potentialDisciplineName = buildDisciplineFullName(baseName, selectedLevel.name)
+                    // Comprueba si esta combinación (nombre completo + ID de nivel) ya existe
+                    if (existingDisciplines.any {
+                            it.name.equals(potentialDisciplineName, ignoreCase = true) &&
+                                    it.level_id == selectedLevel.id
+                        }) {
+                        duplicateErrors.add("Ya existe '$potentialDisciplineName'")
+                    }
+                }
+            }
+
+            val duplicateError = if (duplicateErrors.isNotEmpty()) {
+                duplicateErrors.joinToString("\n• ", prefix = "Las siguientes ya existen y no pueden ser registradas:\n• ")
+            } else null
+
+            return DisciplinaValidationResult(
+                isValid = nameError == null && levelsError == null && duplicateError == null,
+                nameError = nameError,
+                levelsError = levelsError,
+                duplicateError = duplicateError
+            )
+        }
+    }
+}
+
+// --- Composable Principal ---
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,13 +118,14 @@ fun AddNewDisciplinaScreen(
 
     // Estados del formulario
     var currentStep by remember { mutableStateOf(DisciplinaFormStep.INFO) }
-    var name by remember { mutableStateOf("") }
-    var selectedLevel by remember { mutableStateOf<LevelEntity?>(null) }
+    var baseName by remember { mutableStateOf("") } // Nombre base de la disciplina
+    var selectedLevelIds by remember { mutableStateOf<Set<Long>>(emptySet()) } // Set de IDs de los niveles seleccionados
     var formState by remember { mutableStateOf<DisciplinaFormState>(DisciplinaFormState.Idle) }
-    var expanded by remember { mutableStateOf(false) }
-    var nameError by remember { mutableStateOf<String?>(null) }
-    var levelError by remember { mutableStateOf<String?>(null) }
 
+    // Estados de validación
+    var validationResult by remember { mutableStateOf(DisciplinaValidationResult(true)) }
+
+    // Datos maestros: todos los niveles disponibles y todas las disciplinas existentes
     val allLevels = remember { mutableStateOf<List<LevelEntity>>(emptyList()) }
     val existingDisciplines = remember { mutableStateOf<List<DisciplineSelectAll>>(emptyList()) }
 
@@ -75,33 +135,24 @@ fun AddNewDisciplinaScreen(
             allLevels.value = repository.getAllLevels()
             existingDisciplines.value = repository.getAllDisciplines()
             if (allLevels.value.isEmpty()) {
-                formState = DisciplinaFormState.Error("No hay niveles disponibles. Crea niveles primero.")
+                formState = DisciplinaFormState.Error("No hay niveles disponibles. Crea niveles primero para poder asociar disciplinas.")
             }
         } catch (e: Exception) {
-            formState = DisciplinaFormState.Error("Error al cargar datos: ${e.message}")
+            formState = DisciplinaFormState.Error("Error al cargar datos iniciales: ${e.message}")
         }
     }
 
-    // Función de validación mejorada
+    // Función de validación que usa la nueva clase DisciplinaValidator
     fun validateForm(): Boolean {
-        nameError = when {
-            name.isEmpty() -> "El nombre es obligatorio"
-            name.length < 3 -> "Mínimo 3 caracteres"
-            name.length > 50 -> "Máximo 50 caracteres"
-            !name.matches(Regex("^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$")) -> "Solo letras y espacios"
-            else -> null
-        }
-
-        levelError = when {
-            selectedLevel == null -> "Selecciona un nivel"
-            allLevels.value.isEmpty() -> "No hay niveles disponibles"
-            existingDisciplines.value.any {
-                it.name.equals(name.trim(), ignoreCase = true) && it.level_id == selectedLevel!!.id
-            } -> "Ya existe esta disciplina en ${selectedLevel!!.name}"
-            else -> null
-        }
-
-        return nameError == null && levelError == null
+        // Mapea los IDs seleccionados a los objetos LevelEntity completos para la validación
+        val selectedLevelEntities = allLevels.value.filter { it.id in selectedLevelIds }
+        val result = DisciplinaValidator.validate(
+            baseName = baseName,
+            selectedLevelEntities = selectedLevelEntities,
+            existingDisciplines = existingDisciplines.value
+        )
+        validationResult = result
+        return result.isValid
     }
 
     // Función para proceder al siguiente paso
@@ -114,20 +165,41 @@ fun AddNewDisciplinaScreen(
             }
             DisciplinaFormStep.CONFIRMATION -> {
                 formState = DisciplinaFormState.Loading
+                val levelsToInsertIds = selectedLevelIds.toList()
+
+                if (levelsToInsertIds.isEmpty()) {
+                    // Esto debería ser atrapado por la validación del paso INFO, pero como fallback
+                    formState = DisciplinaFormState.Error("Debes seleccionar al menos un nivel para la disciplina.")
+                    return
+                }
+
                 try {
-                    selectedLevel?.id?.let { levelId ->
-                        repository.insertDiscipline(name.trim(), levelId)
+                    // Usa el método de inserción por lotes
+                    val failedInsertions = repository.insertDisciplinesWithLevelsBatch(baseName.trim(), levelsToInsertIds)
+
+                    if (failedInsertions.isNotEmpty()) {
+                        // Algunas disciplinas ya existían o hubo un problema específico
+                        formState = DisciplinaFormState.Error(
+                            message = "Se registraron algunas disciplinas, pero otras ya existían.",
+                            failedDisciplines = failedInsertions
+                        )
+                        // Si quieres que el formulario se cierre solo si todo es exitoso,
+                        // elimina el onDismiss() de aquí. Si quieres que se cierre y muestre el error de las fallidas, déjalo.
+                        onDismiss() // Puedes decidir si cerrar o no si hay fallos parciales
+                    } else {
+                        // Todas las inserciones fueron exitosas
+                        formState = DisciplinaFormState.Success
+                        onDismiss()
                     }
-                    formState = DisciplinaFormState.Success
-                    onDismiss()
                 } catch (e: Exception) {
-                    formState = DisciplinaFormState.Error("Error al registrar: ${e.message}")
+                    // Errores inesperados durante la transacción
+                    formState = DisciplinaFormState.Error("Error inesperado al registrar disciplinas: ${e.message}")
                 }
             }
         }
     }
 
-    // UI Principal
+    // --- UI Principal ---
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -176,7 +248,7 @@ fun AddNewDisciplinaScreen(
 
                     Text(
                         text = when (currentStep) {
-                            DisciplinaFormStep.INFO -> "Paso 1: Información"
+                            DisciplinaFormStep.INFO -> "Paso 1: Información de la Disciplina"
                             DisciplinaFormStep.CONFIRMATION -> "Paso 2: Confirmación"
                         },
                         style = MaterialTheme.typography.titleMedium,
@@ -185,20 +257,24 @@ fun AddNewDisciplinaScreen(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Contenido del formulario
+                    // Contenido del formulario basado en el paso actual
                     when (currentStep) {
                         DisciplinaFormStep.INFO -> {
-                            // Campo de nombre
+                            // Campo de nombre base de la disciplina
                             OutlinedTextField(
-                                value = name,
+                                value = baseName,
                                 onValueChange = {
-                                    name = it
-                                    nameError = null
+                                    baseName = it
+                                    // Limpiar errores cuando el usuario escribe
+                                    if (validationResult.nameError != null || validationResult.duplicateError != null) {
+                                        validationResult = validationResult.copy(nameError = null, duplicateError = null)
+                                    }
                                 },
-                                label = { Text("Nombre de la disciplina") },
-                                isError = nameError != null,
+                                label = { Text("Nombre de la disciplina (base)") },
+                                placeholder = { Text("Ej: Danza, Jazz, Hip Hop") },
+                                isError = validationResult.nameError != null,
                                 supportingText = {
-                                    nameError?.let {
+                                    validationResult.nameError?.let {
                                         Text(it, color = MaterialTheme.colorScheme.error)
                                     }
                                 },
@@ -215,50 +291,121 @@ fun AddNewDisciplinaScreen(
 
                             Spacer(Modifier.height(16.dp))
 
-                            // Selector de nivel
-                            if (allLevels.value.isEmpty()) {
-                                Text(
-                                    text = "⚠️ No hay niveles disponibles. Registra niveles primero.",
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            } else {
-                                ExposedDropdownMenuBox(
-                                    expanded = expanded,
-                                    onExpandedChange = { expanded = it }
+                            // Selector de niveles (Múltiple con Checkboxes)
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFF8F9FA)
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    OutlinedTextField(
-                                        readOnly = true,
-                                        value = selectedLevel?.name ?: "Seleccionar nivel",
-                                        onValueChange = {},
-                                        label = { Text("Nivel") },
-                                        trailingIcon = {
-                                            ExposedDropdownMenuDefaults.TrailingIcon(
-                                                expanded = expanded
-                                            )
-                                        },
-                                        isError = levelError != null,
-                                        supportingText = {
-                                            levelError?.let {
-                                                Text(it, color = MaterialTheme.colorScheme.error)
-                                            }
-                                        },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .menuAnchor()
+                                    Text(
+                                        text = "Seleccionar Niveles a Asociar",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = AppColors.TextColor
                                     )
 
-                                    ExposedDropdownMenu(
-                                        expanded = expanded,
-                                        onDismissRequest = { expanded = false }
-                                    ) {
+                                    if (allLevels.value.isEmpty()) {
+                                        Text(
+                                            text = "⚠️ No hay niveles disponibles. Crea niveles primero.",
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    } else {
+                                        // Mostrar error si no se selecciona ningún nivel
+                                        if (validationResult.levelsError != null) {
+                                            Text(
+                                                text = validationResult.levelsError!!,
+                                                color = MaterialTheme.colorScheme.error,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+
+                                        // Checkboxes para los niveles existentes
                                         allLevels.value.forEach { level ->
-                                            DropdownMenuItem(
-                                                text = { Text(level.name) },
-                                                onClick = {
-                                                    selectedLevel = level
-                                                    levelError = null
-                                                    expanded = false
-                                                }
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Checkbox(
+                                                    checked = selectedLevelIds.contains(level.id),
+                                                    onCheckedChange = { isChecked ->
+                                                        selectedLevelIds = if (isChecked) {
+                                                            selectedLevelIds + level.id
+                                                        } else {
+                                                            selectedLevelIds - level.id
+                                                        }
+                                                        // Limpiar errores cuando se cambia la selección de niveles
+                                                        if (validationResult.levelsError != null || validationResult.duplicateError != null) {
+                                                            validationResult = validationResult.copy(levelsError = null, duplicateError = null)
+                                                        }
+                                                    },
+                                                    colors = CheckboxDefaults.colors(checkedColor = AppColors.Primary)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = level.name,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = if (selectedLevelIds.contains(level.id)) AppColors.Primary else AppColors.TextColor
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(Modifier.height(16.dp))
+
+                            // Mostrar error de duplicados de validación
+                            if (validationResult.duplicateError != null) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = validationResult.duplicateError!!,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(12.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(16.dp))
+
+                            // Vista previa de las disciplinas a crear
+                            if (baseName.isNotEmpty() && selectedLevelIds.isNotEmpty()) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = AppColors.Primary.copy(alpha = 0.1f)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            text = "Se crearán las siguientes disciplinas:",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Medium,
+                                            color = AppColors.Primary
+                                        )
+                                        val selectedLevelsData = allLevels.value.filter { it.id in selectedLevelIds }
+                                        selectedLevelsData.sortedBy { it.name }.forEach { level ->
+                                            Text(
+                                                text = "• ${buildDisciplineFullName(baseName, level.name)}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = AppColors.Primary
                                             )
                                         }
                                     }
@@ -267,7 +414,7 @@ fun AddNewDisciplinaScreen(
                         }
 
                         DisciplinaFormStep.CONFIRMATION -> {
-                            // Confirmación
+                            // Contenido del paso de confirmación
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
@@ -279,27 +426,85 @@ fun AddNewDisciplinaScreen(
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Text(
-                                        text = "Confirmar Registro",
+                                        text = "Confirmar Registro de Disciplinas",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
                                     )
 
                                     Divider(color = AppColors.Primary.copy(alpha = 0.3f))
 
-                                    Row(
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Disciplina:", fontWeight = FontWeight.Medium)
-                                        Text(name.trim(), fontWeight = FontWeight.Bold)
-                                    }
+                                    val disciplinesToConfirm = allLevels.value
+                                        .filter { it.id in selectedLevelIds }
+                                        .map { level -> buildDisciplineFullName(baseName, level.name) }
+                                        .sorted()
 
-                                    Row(
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("Nivel:", fontWeight = FontWeight.Medium)
-                                        Text(selectedLevel?.name ?: "Ninguno", fontWeight = FontWeight.Bold)
+                                    Text(
+                                        text = "Se ${if (disciplinesToConfirm.size > 1) "registrarán" else "registrará"} ${disciplinesToConfirm.size} ${if (disciplinesToConfirm.size > 1) "disciplinas" else "disciplina"}:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = AppColors.TextColor
+                                    )
+                                    disciplinesToConfirm.forEach { disciplineName ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "•",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = AppColors.Primary,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = disciplineName,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = AppColors.Primary,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(16.dp))
+
+                            // Mensajes de error globales o de inserción
+                            if (formState is DisciplinaFormState.Error) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                            text = "Error de registro:",
+                                            color = MaterialTheme.colorScheme.onErrorContainer,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = (formState as DisciplinaFormState.Error).message,
+                                            color = MaterialTheme.colorScheme.onErrorContainer,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        if ((formState as DisciplinaFormState.Error).failedDisciplines.isNotEmpty()) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "Las siguientes ya existían y no se registraron:",
+                                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Bold // Resaltar los nombres de las que ya existen
+                                            )
+                                            (formState as DisciplinaFormState.Error).failedDisciplines.forEach { (name, _) ->
+                                                Text(
+                                                    text = "• $name",
+                                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -307,15 +512,6 @@ fun AddNewDisciplinaScreen(
                     }
 
                     Spacer(Modifier.weight(1f))
-
-                    // Mensajes de error globales
-                    if (formState is DisciplinaFormState.Error) {
-                        Text(
-                            text = (formState as DisciplinaFormState.Error).message,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
 
                     // Botones de navegación
                     Row(
@@ -325,9 +521,12 @@ fun AddNewDisciplinaScreen(
                         Button(
                             onClick = onDismiss,
                             modifier = Modifier.weight(1f),
+                            enabled = formState !is DisciplinaFormState.Loading,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFff8abe)
-                            )
+                                containerColor = Color(0xFFff8abe),
+                                disabledContainerColor = Color(0xFFff8abe).copy(alpha = 0.6f)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
                             Text("Cancelar")
                         }
@@ -336,9 +535,12 @@ fun AddNewDisciplinaScreen(
                             Button(
                                 onClick = { currentStep = DisciplinaFormStep.INFO },
                                 modifier = Modifier.weight(1f),
+                                enabled = formState !is DisciplinaFormState.Loading,
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFff8abe)
-                                )
+                                    containerColor = Color(0xFFff8abe),
+                                    disabledContainerColor = Color(0xFFff8abe).copy(alpha = 0.6f)
+                                ),
+                                shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text("Atrás")
                             }
@@ -349,8 +551,10 @@ fun AddNewDisciplinaScreen(
                             modifier = Modifier.weight(1f),
                             enabled = formState !is DisciplinaFormState.Loading,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = AppColors.Primary
-                            )
+                                containerColor = AppColors.Primary,
+                                disabledContainerColor = AppColors.Primary.copy(alpha = 0.6f)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
                             if (formState is DisciplinaFormState.Loading) {
                                 CircularProgressIndicator(
@@ -374,6 +578,7 @@ fun AddNewDisciplinaScreen(
     }
 }
 
+// --- Composable para el Logo de Fondo (tal como lo tenías) ---
 @Composable
 private fun BackgroundLogo() {
     Box(

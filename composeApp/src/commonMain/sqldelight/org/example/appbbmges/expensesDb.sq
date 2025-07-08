@@ -138,7 +138,8 @@ CREATE TABLE DisciplineEntity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     level_id INTEGER NOT NULL,
-    FOREIGN KEY(level_id) REFERENCES LevelEntity(id)
+    FOREIGN KEY(level_id) REFERENCES LevelEntity(id),
+     UNIQUE(name, level_id)
 );
 
 disciplineCreate:

@@ -155,12 +155,29 @@ class Repository(private val database: AppDatabaseBaby) {
         database.expensesDbQueries.disciplineCreate(name, levelId)
     }
 
-    fun insertDisciplineWithLevels(baseName: String, levelIds: List<Long>) {
-        levelIds.forEach { levelId ->
-            val level = getLevelById(levelId) ?: return@forEach
-            val disciplineName = "$baseName ${level.name}".trim()
-            insertDiscipline(disciplineName, levelId)
+    fun insertDisciplinesWithLevelsBatch(baseName: String, levelIds: List<Long>): List<Pair<String, Long>> {
+        val failedInsertions = mutableListOf<Pair<String, Long>>()
+
+        database.expensesDbQueries.transaction {
+            levelIds.forEach { levelId ->
+                val level = getLevelById(levelId)
+                if (level == null) {
+                    return@forEach
+                }
+
+                val disciplineName = "$baseName ${level.name}".trim()
+                try {
+                    database.expensesDbQueries.disciplineCreate(disciplineName, levelId)
+                } catch (e: Exception) {
+                    if (e.message?.contains("UNIQUE constraint failed", ignoreCase = true) == true) {
+                        failedInsertions.add(Pair(disciplineName, levelId))
+                    } else {
+                        throw e
+                    }
+                }
+            }
         }
+        return failedInsertions
     }
 
     fun getAllDisciplines(): List<DisciplineSelectAll> {

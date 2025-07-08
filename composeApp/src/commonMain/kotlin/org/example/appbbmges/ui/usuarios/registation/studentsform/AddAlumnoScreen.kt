@@ -1,4 +1,4 @@
-package org.example.appbbmges.ui.usuarios.registation
+package org.example.appbbmges.ui.usuarios.registation.studentsform
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
