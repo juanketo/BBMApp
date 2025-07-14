@@ -1,0 +1,892 @@
+-- expensesDb.sq
+
+-- RoleEntity
+CREATE TABLE RoleEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT
+);
+
+roleCreate:
+INSERT INTO RoleEntity (name, description)
+VALUES (?, ?);
+
+roleSelectAll:
+SELECT * FROM RoleEntity;
+
+roleSelectById:
+SELECT * FROM RoleEntity WHERE id = ?;
+
+roleUpdate:
+UPDATE RoleEntity
+SET name = ?, description = ?
+WHERE id = ?;
+
+roleDelete:
+DELETE FROM RoleEntity WHERE id = ?;
+
+roleCount:
+SELECT COUNT(*) FROM RoleEntity;
+
+-- UserEntity
+CREATE TABLE UserEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    role_id INTEGER NOT NULL,
+    franchise_id INTEGER NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY(role_id) REFERENCES RoleEntity(id),
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id)
+);
+
+userCreate:
+INSERT INTO UserEntity (username, password, role_id, franchise_id, active)
+VALUES (?, ?, ?, ?, ?);
+
+selectAllUsers:
+SELECT * FROM UserEntity;
+
+selectUserById:
+SELECT * FROM UserEntity WHERE id = ?;
+
+selectUserByUsername:
+SELECT * FROM UserEntity WHERE username = ?;
+
+updateUser:
+UPDATE UserEntity
+SET username = ?, password = ?
+WHERE id = ?;
+
+deleteUser:
+DELETE FROM UserEntity WHERE id = ?;
+
+countUsers:
+SELECT COUNT(*) FROM UserEntity;
+
+-- FranchiseEntity
+CREATE TABLE FranchiseEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    base_price REAL,
+    currency TEXT,
+    address_street TEXT,
+    address_number TEXT,
+    address_neighborhood TEXT,
+    address_zip TEXT,
+    address_city TEXT,
+    address_country TEXT,
+    tax_name TEXT,
+    tax_id TEXT,
+    zone TEXT,
+    is_new INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1
+);
+
+franchiseCreate:
+INSERT INTO FranchiseEntity (name, email, phone, base_price, currency, address_street, address_number, address_neighborhood, address_zip, address_city, address_country, tax_name, tax_id, zone, is_new, active)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+franchiseSelectAll:
+SELECT * FROM FranchiseEntity;
+
+franchiseSelectById:
+SELECT * FROM FranchiseEntity WHERE id = ?;
+
+franchiseUpdate:
+UPDATE FranchiseEntity
+SET name = ?, email = ?, phone = ?, base_price = ?, currency = ?, address_street = ?, address_number = ?, address_neighborhood = ?, address_zip = ?, address_city = ?, address_country = ?, tax_name = ?, tax_id = ?, zone = ?, is_new = ?, active = ?
+WHERE id = ?;
+
+franchiseDelete:
+DELETE FROM FranchiseEntity WHERE id = ?;
+
+franchiseCount:
+SELECT COUNT(*) FROM FranchiseEntity;
+
+-- LevelEntity
+CREATE TABLE LevelEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL
+);
+
+levelCreate:
+INSERT INTO LevelEntity (name)
+VALUES (?);
+
+levelSelectAll:
+SELECT * FROM LevelEntity;
+
+levelSelectById:
+SELECT * FROM LevelEntity WHERE id = ?;
+
+levelUpdate:
+UPDATE LevelEntity
+SET name = ?
+WHERE id = ?;
+
+levelDelete:
+DELETE FROM LevelEntity WHERE id = ?;
+
+levelCount:
+SELECT COUNT(*) FROM LevelEntity;
+
+-- DisciplineEntity
+CREATE TABLE DisciplineEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    level_id INTEGER NOT NULL,
+    FOREIGN KEY(level_id) REFERENCES LevelEntity(id),
+     UNIQUE(name, level_id)
+);
+
+disciplineCreate:
+INSERT INTO DisciplineEntity (name, level_id)
+VALUES (?, ?);
+
+disciplineSelectAll:
+SELECT d.id, d.name, d.level_id, l.name AS level_name
+FROM DisciplineEntity d
+JOIN LevelEntity l ON d.level_id = l.id;
+
+disciplineSelectById:
+SELECT d.id, d.name, d.level_id, l.name AS level_name
+FROM DisciplineEntity d
+JOIN LevelEntity l ON d.level_id = l.id
+WHERE d.id = ?;
+
+disciplineSelectByBaseName:
+SELECT d.id, d.name, d.level_id, l.name AS level_name
+FROM DisciplineEntity d
+JOIN LevelEntity l ON d.level_id = l.id
+WHERE d.name LIKE ? || '%';
+
+disciplineUpdate:
+UPDATE DisciplineEntity
+SET name = ?, level_id = ?
+WHERE id = ?;
+
+disciplineDelete:
+DELETE FROM DisciplineEntity WHERE id = ?;
+
+disciplineCount:
+SELECT COUNT(*) FROM DisciplineEntity;
+
+-- FranchiseDisciplineEntity
+CREATE TABLE FranchiseDisciplineEntity (
+    franchise_id INTEGER NOT NULL,
+    discipline_id INTEGER NOT NULL,
+    PRIMARY KEY (franchise_id, discipline_id),
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id),
+    FOREIGN KEY(discipline_id) REFERENCES DisciplineEntity(id)
+);
+
+franchiseDisciplineCreate:
+INSERT INTO FranchiseDisciplineEntity (franchise_id, discipline_id)
+VALUES (?, ?);
+
+franchiseDisciplineSelectAll:
+SELECT * FROM FranchiseDisciplineEntity;
+
+franchiseDisciplineSelectByFranchiseId:
+SELECT * FROM FranchiseDisciplineEntity WHERE franchise_id = ?;
+
+franchiseDisciplineUpdate:
+UPDATE FranchiseDisciplineEntity
+SET discipline_id = ?
+WHERE franchise_id = ? AND discipline_id = ?;
+
+franchiseDisciplineDelete:
+DELETE FROM FranchiseDisciplineEntity WHERE franchise_id = ? AND discipline_id = ?;
+
+franchiseDisciplineCount:
+SELECT COUNT(*) FROM FranchiseDisciplineEntity;
+
+-- ClassroomEntity
+CREATE TABLE ClassroomEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    franchise_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id)
+);
+
+classroomCreate:
+INSERT INTO ClassroomEntity (franchise_id, name)
+VALUES (?, ?);
+
+classroomSelectAll:
+SELECT * FROM ClassroomEntity;
+
+classroomSelectById:
+SELECT * FROM ClassroomEntity WHERE id = ?;
+
+classroomSelectByFranchiseId:
+SELECT * FROM ClassroomEntity WHERE franchise_id = ?;
+
+classroomUpdate:
+UPDATE ClassroomEntity
+SET franchise_id = ?, name = ?
+WHERE id = ?;
+
+classroomDelete:
+DELETE FROM ClassroomEntity WHERE id = ?;
+
+classroomCount:
+SELECT COUNT(*) FROM ClassroomEntity;
+
+-- TeacherEntity
+CREATE TABLE TeacherEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name_paternal TEXT,
+    last_name_maternal TEXT,
+    gender TEXT,
+    birth_date TEXT,
+    nationality TEXT,
+    tax_id TEXT,
+    phone TEXT,
+    email TEXT,
+    address_street TEXT,
+    address_zip TEXT,
+    emergency_contact_name TEXT,
+    emergency_contact_phone TEXT,
+    salary_per_hour REAL,
+    start_date TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    vetoed INTEGER NOT NULL DEFAULT 0
+);
+
+teacherCreate:
+INSERT INTO TeacherEntity (first_name, last_name_paternal, last_name_maternal, gender, birth_date, nationality, tax_id, phone, email, address_street, address_zip, emergency_contact_name, emergency_contact_phone, salary_per_hour, start_date, active, vetoed)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+teacherSelectAll:
+SELECT * FROM TeacherEntity;
+
+teacherSelectById:
+SELECT * FROM TeacherEntity WHERE id = ?;
+
+teacherUpdate:
+UPDATE TeacherEntity
+SET first_name = ?, last_name_paternal = ?, last_name_maternal = ?, gender = ?, birth_date = ?, nationality = ?, tax_id = ?, phone = ?, email = ?, address_street = ?, address_zip = ?, emergency_contact_name = ?, emergency_contact_phone = ?, salary_per_hour = ?, start_date = ?, active = ?, vetoed = ?
+WHERE id = ?;
+
+teacherDelete:
+DELETE FROM TeacherEntity WHERE id = ?;
+
+teacherCount:
+SELECT COUNT(*) FROM TeacherEntity;
+
+-- FranchiseeEntity
+CREATE TABLE FranchiseeEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    franchise_id INTEGER NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name_paternal TEXT,
+    last_name_maternal TEXT,
+    gender TEXT,
+    birth_date TEXT,
+    nationality TEXT,
+    tax_id TEXT,
+    phone TEXT,
+    email TEXT,
+    address_street TEXT,
+    address_zip TEXT,
+    emergency_contact_name TEXT,
+    emergency_contact_phone TEXT,
+    start_date TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id)
+);
+
+franchiseeCreate:
+INSERT INTO FranchiseeEntity (franchise_id, first_name, last_name_paternal, last_name_maternal, gender, birth_date, nationality, tax_id, phone, email, address_street, address_zip, emergency_contact_name, emergency_contact_phone, start_date, active)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+franchiseeSelectAll:
+SELECT * FROM FranchiseeEntity;
+
+franchiseeSelectById:
+SELECT * FROM FranchiseeEntity WHERE id = ?;
+
+franchiseeSelectByFranchiseId:
+SELECT * FROM FranchiseeEntity WHERE franchise_id = ?;
+
+franchiseeUpdate:
+UPDATE FranchiseeEntity
+SET franchise_id = ?, first_name = ?, last_name_paternal = ?, last_name_maternal = ?, gender = ?, birth_date = ?, nationality = ?, tax_id = ?, phone = ?, email = ?, address_street = ?, address_zip = ?, emergency_contact_name = ?, emergency_contact_phone = ?, start_date = ?, active = ?
+WHERE id = ?;
+
+franchiseeDelete:
+DELETE FROM FranchiseeEntity WHERE id = ?;
+
+franchiseeCount:
+SELECT COUNT(*) FROM FranchiseeEntity;
+
+-- FranchiseTeacherEntity
+CREATE TABLE FranchiseTeacherEntity (
+    franchise_id INTEGER NOT NULL,
+    teacher_id INTEGER NOT NULL,
+    PRIMARY KEY (franchise_id, teacher_id),
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id),
+    FOREIGN KEY(teacher_id) REFERENCES TeacherEntity(id)
+);
+
+franchiseTeacherCreate:
+INSERT INTO FranchiseTeacherEntity (franchise_id, teacher_id)
+VALUES (?, ?);
+
+franchiseTeacherSelectAll:
+SELECT * FROM FranchiseTeacherEntity;
+
+franchiseTeacherSelectByFranchiseId:
+SELECT * FROM FranchiseTeacherEntity WHERE franchise_id = ?;
+
+franchiseTeacherUpdate:
+UPDATE FranchiseTeacherEntity
+SET teacher_id = ?
+WHERE franchise_id = ? AND teacher_id = ?;
+
+franchiseTeacherDelete:
+DELETE FROM FranchiseTeacherEntity WHERE franchise_id = ? AND teacher_id = ?;
+
+franchiseTeacherCount:
+SELECT COUNT(*) FROM FranchiseTeacherEntity;
+
+-- TeacherDisciplineEntity
+CREATE TABLE TeacherDisciplineEntity (
+    teacher_id INTEGER NOT NULL,
+    discipline_id INTEGER NOT NULL,
+    PRIMARY KEY (teacher_id, discipline_id),
+    FOREIGN KEY(teacher_id) REFERENCES TeacherEntity(id),
+    FOREIGN KEY(discipline_id) REFERENCES DisciplineEntity(id)
+);
+
+teacherDisciplineCreate:
+INSERT INTO TeacherDisciplineEntity (teacher_id, discipline_id)
+VALUES (?, ?);
+
+teacherDisciplineSelectAll:
+SELECT * FROM TeacherDisciplineEntity;
+
+teacherDisciplineSelectByTeacherId:
+SELECT * FROM TeacherDisciplineEntity WHERE teacher_id = ?;
+
+teacherDisciplineUpdate:
+UPDATE TeacherDisciplineEntity
+SET discipline_id = ?
+WHERE teacher_id = ? AND discipline_id = ?;
+
+teacherDisciplineDelete:
+DELETE FROM TeacherDisciplineEntity WHERE teacher_id = ? AND discipline_id = ?;
+
+teacherDisciplineCount:
+SELECT COUNT(*) FROM TeacherDisciplineEntity;
+
+-- StudentEntity
+CREATE TABLE StudentEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    franchise_id INTEGER NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name_paternal TEXT,
+    last_name_maternal TEXT,
+    gender TEXT,
+    birth_date TEXT,
+    nationality TEXT,
+    curp TEXT,
+    phone TEXT,
+    email TEXT,
+    address_street TEXT,
+    address_zip TEXT,
+    parent_father_first_name TEXT,
+    parent_father_last_name_paternal TEXT,
+    parent_father_last_name_maternal TEXT,
+    parent_mother_first_name TEXT,
+    parent_mother_last_name_paternal TEXT,
+    parent_mother_last_name_maternal TEXT,
+    blood_type TEXT,
+    chronic_disease TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id)
+);
+
+studentCreate:
+INSERT INTO StudentEntity (franchise_id, first_name, last_name_paternal, last_name_maternal, gender, birth_date, nationality, curp, phone, email, address_street, address_zip, parent_father_first_name, parent_father_last_name_paternal, parent_father_last_name_maternal, parent_mother_first_name, parent_mother_last_name_paternal, parent_mother_last_name_maternal, blood_type, chronic_disease, active)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+studentSelectAll:
+SELECT * FROM StudentEntity;
+
+studentSelectById:
+SELECT * FROM StudentEntity WHERE id = ?;
+
+studentSelectByFranchiseId:
+SELECT * FROM StudentEntity WHERE franchise_id = ?;
+
+studentUpdate:
+UPDATE StudentEntity
+SET franchise_id = ?, first_name = ?, last_name_paternal = ?, last_name_maternal = ?, gender = ?, birth_date = ?, nationality = ?, curp = ?, phone = ?, email = ?, address_street = ?, address_zip = ?, parent_father_first_name = ?, parent_father_last_name_paternal = ?, parent_father_last_name_maternal = ?, parent_mother_first_name = ?, parent_mother_last_name_paternal = ?, parent_mother_last_name_maternal = ?, blood_type = ?, chronic_disease = ?, active = ?
+WHERE id = ?;
+
+studentDelete:
+DELETE FROM StudentEntity WHERE id = ?;
+
+studentCount:
+SELECT COUNT(*) FROM StudentEntity;
+
+-- StudentAuthorizedAdultEntity
+CREATE TABLE StudentAuthorizedAdultEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name_paternal TEXT,
+    last_name_maternal TEXT,
+    FOREIGN KEY(student_id) REFERENCES StudentEntity(id)
+);
+
+studentAuthorizedAdultCreate:
+INSERT INTO StudentAuthorizedAdultEntity (student_id, first_name, last_name_paternal, last_name_maternal)
+VALUES (?, ?, ?, ?);
+
+studentAuthorizedAdultSelectAll:
+SELECT * FROM StudentAuthorizedAdultEntity;
+
+studentAuthorizedAdultSelectById:
+SELECT * FROM StudentAuthorizedAdultEntity WHERE id = ?;
+
+studentAuthorizedAdultSelectByStudentId:
+SELECT * FROM StudentAuthorizedAdultEntity WHERE student_id = ?;
+
+studentAuthorizedAdultUpdate:
+UPDATE StudentAuthorizedAdultEntity
+SET student_id = ?, first_name = ?, last_name_paternal = ?, last_name_maternal = ?
+WHERE id = ?;
+
+studentAuthorizedAdultDelete:
+DELETE FROM StudentAuthorizedAdultEntity WHERE id = ?;
+
+studentAuthorizedAdultCount:
+SELECT COUNT(*) FROM StudentAuthorizedAdultEntity;
+
+-- ScheduleEntity
+CREATE TABLE ScheduleEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    franchise_id INTEGER NOT NULL,
+    classroom_id INTEGER NOT NULL,
+    teacher_id INTEGER NOT NULL,
+    discipline_id INTEGER NOT NULL,
+    day_of_week INTEGER NOT NULL,
+    start_time TEXT NOT NULL,
+    end_time TEXT NOT NULL,
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id),
+    FOREIGN KEY(classroom_id) REFERENCES ClassroomEntity(id),
+    FOREIGN KEY(teacher_id) REFERENCES TeacherEntity(id),
+    FOREIGN KEY(discipline_id) REFERENCES DisciplineEntity(id)
+);
+
+scheduleCreate:
+INSERT INTO ScheduleEntity (franchise_id, classroom_id, teacher_id, discipline_id, day_of_week, start_time, end_time)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+scheduleSelectAll:
+SELECT * FROM ScheduleEntity;
+
+scheduleSelectById:
+SELECT * FROM ScheduleEntity WHERE id = ?;
+
+scheduleSelectByFranchiseId:
+SELECT * FROM ScheduleEntity WHERE franchise_id = ?;
+
+scheduleUpdate:
+UPDATE ScheduleEntity
+SET franchise_id = ?, classroom_id = ?, teacher_id = ?, discipline_id = ?, day_of_week = ?, start_time = ?, end_time = ?
+WHERE id = ?;
+
+scheduleDelete:
+DELETE FROM ScheduleEntity WHERE id = ?;
+
+scheduleCount:
+SELECT COUNT(*) FROM ScheduleEntity;
+
+-- StudentScheduleEntity
+CREATE TABLE StudentScheduleEntity (
+    student_id INTEGER NOT NULL,
+    schedule_id INTEGER NOT NULL,
+    PRIMARY KEY (student_id, schedule_id),
+    FOREIGN KEY(student_id) REFERENCES StudentEntity(id),
+    FOREIGN KEY(schedule_id) REFERENCES ScheduleEntity(id)
+);
+
+studentScheduleCreate:
+INSERT INTO StudentScheduleEntity (student_id, schedule_id)
+VALUES (?, ?);
+
+studentScheduleSelectAll:
+SELECT * FROM StudentScheduleEntity;
+
+studentScheduleSelectByStudentId:
+SELECT * FROM StudentScheduleEntity WHERE student_id = ?;
+
+studentScheduleUpdate:
+UPDATE StudentScheduleEntity
+SET schedule_id = ?
+WHERE student_id = ? AND schedule_id = ?;
+
+studentScheduleDelete:
+DELETE FROM StudentScheduleEntity WHERE student_id = ? AND schedule_id = ?;
+
+studentScheduleCount:
+SELECT COUNT(*) FROM StudentScheduleEntity;
+
+-- BoutiqueItemEntity
+CREATE TABLE BoutiqueItemEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    description TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE,
+    line TEXT,
+    franchise_price REAL,
+    suggested_price REAL,
+    country TEXT
+);
+
+boutiqueItemCreate:
+INSERT INTO BoutiqueItemEntity (description, code, line, franchise_price, suggested_price, country)
+VALUES (?, ?, ?, ?, ?, ?);
+
+boutiqueItemSelectAll:
+SELECT * FROM BoutiqueItemEntity;
+
+boutiqueItemSelectById:
+SELECT * FROM BoutiqueItemEntity WHERE id = ?;
+
+boutiqueItemSelectByCode:
+SELECT * FROM BoutiqueItemEntity WHERE code = ?;
+
+boutiqueItemUpdate:
+UPDATE BoutiqueItemEntity
+SET description = ?, code = ?, line = ?, franchise_price = ?, suggested_price = ?, country = ?
+WHERE id = ?;
+
+boutiqueItemDelete:
+DELETE FROM BoutiqueItemEntity WHERE id = ?;
+
+boutiqueItemCount:
+SELECT COUNT(*) FROM BoutiqueItemEntity;
+
+-- FranchiseBoutiqueInventoryEntity
+CREATE TABLE FranchiseBoutiqueInventoryEntity (
+    franchise_id INTEGER NOT NULL,
+    boutique_item_id INTEGER NOT NULL,
+    stock INTEGER NOT NULL DEFAULT 0,
+    sale_price REAL,
+    PRIMARY KEY (franchise_id, boutique_item_id),
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id),
+    FOREIGN KEY(boutique_item_id) REFERENCES BoutiqueItemEntity(id)
+);
+
+franchiseBoutiqueInventoryCreate:
+INSERT INTO FranchiseBoutiqueInventoryEntity (franchise_id, boutique_item_id, stock, sale_price)
+VALUES (?, ?, ?, ?);
+
+franchiseBoutiqueInventorySelectAll:
+SELECT * FROM FranchiseBoutiqueInventoryEntity;
+
+franchiseBoutiqueInventorySelectByFranchiseId:
+SELECT * FROM FranchiseBoutiqueInventoryEntity WHERE franchise_id = ?;
+
+franchiseBoutiqueInventoryUpdate:
+UPDATE FranchiseBoutiqueInventoryEntity
+SET stock = ?, sale_price = ?
+WHERE franchise_id = ? AND boutique_item_id = ?;
+
+franchiseBoutiqueInventoryDelete:
+DELETE FROM FranchiseBoutiqueInventoryEntity WHERE franchise_id = ? AND boutique_item_id = ?;
+
+franchiseBoutiqueInventoryCount:
+SELECT COUNT(*) FROM FranchiseBoutiqueInventoryEntity;
+
+-- SnackItemEntity
+CREATE TABLE SnackItemEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    franchise_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE,
+    stock INTEGER NOT NULL DEFAULT 0,
+    price REAL NOT NULL,
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id)
+);
+
+snackItemCreate:
+INSERT INTO SnackItemEntity (franchise_id, name, code, stock, price)
+VALUES (?, ?, ?, ?, ?);
+
+snackItemSelectAll:
+SELECT * FROM SnackItemEntity;
+
+snackItemSelectById:
+SELECT * FROM SnackItemEntity WHERE id = ?;
+
+snackItemSelectByCode:
+SELECT * FROM SnackItemEntity WHERE code = ?;
+
+snackItemUpdate:
+UPDATE SnackItemEntity
+SET franchise_id = ?, name = ?, code = ?, stock = ?, price = ?
+WHERE id = ?;
+
+snackItemDelete:
+DELETE FROM SnackItemEntity WHERE id = ?;
+
+snackItemCount:
+SELECT COUNT(*) FROM SnackItemEntity;
+
+-- PromotionEntity
+CREATE TABLE PromotionEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    discount_type TEXT NOT NULL,
+    discount_value REAL NOT NULL,
+    applicable_to_new INTEGER NOT NULL DEFAULT 0,
+    applicable_to_active INTEGER NOT NULL DEFAULT 0
+);
+
+promotionCreate:
+INSERT INTO PromotionEntity (name, start_date, end_date, discount_type, discount_value, applicable_to_new, applicable_to_active)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+promotionSelectAll:
+SELECT * FROM PromotionEntity;
+
+promotionSelectById:
+SELECT * FROM PromotionEntity WHERE id = ?;
+
+promotionUpdate:
+UPDATE PromotionEntity
+SET name = ?, start_date = ?, end_date = ?, discount_type = ?, discount_value = ?, applicable_to_new = ?, applicable_to_active = ?
+WHERE id = ?;
+
+promotionDelete:
+DELETE FROM PromotionEntity WHERE id = ?;
+
+promotionCount:
+SELECT COUNT(*) FROM PromotionEntity;
+
+-- PaymentEntity
+CREATE TABLE PaymentEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL,
+    franchise_id INTEGER NOT NULL,
+    amount REAL NOT NULL,
+    payment_date TEXT NOT NULL,
+    payment_type TEXT NOT NULL,
+    event_id INTEGER,
+    reference TEXT,
+    FOREIGN KEY(student_id) REFERENCES StudentEntity(id),
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id),
+    FOREIGN KEY(event_id) REFERENCES EventEntity(id)
+);
+
+paymentCreate:
+INSERT INTO PaymentEntity (student_id, franchise_id, amount, payment_date, payment_type, event_id, reference)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+paymentSelectAll:
+SELECT * FROM PaymentEntity;
+
+paymentSelectById:
+SELECT * FROM PaymentEntity WHERE id = ?;
+
+paymentSelectByStudentId:
+SELECT * FROM PaymentEntity WHERE student_id = ?;
+
+paymentUpdate:
+UPDATE PaymentEntity
+SET student_id = ?, franchise_id = ?, amount = ?, payment_date = ?, payment_type = ?, event_id = ?, reference = ?
+WHERE id = ?;
+
+paymentDelete:
+DELETE FROM PaymentEntity WHERE id = ?;
+
+paymentCount:
+SELECT COUNT(*) FROM PaymentEntity;
+
+-- EventEntity
+CREATE TABLE EventEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    event_date TEXT NOT NULL,
+    type TEXT NOT NULL,
+    cost REAL NOT NULL,
+    tickets_available INTEGER NOT NULL
+);
+
+eventCreate:
+INSERT INTO EventEntity (name, description, event_date, type, cost, tickets_available)
+VALUES (?, ?, ?, ?, ?, ?);
+
+eventSelectAll:
+SELECT * FROM EventEntity;
+
+eventSelectById:
+SELECT * FROM EventEntity WHERE id = ?;
+
+eventUpdate:
+UPDATE EventEntity
+SET name = ?, description = ?, event_date = ?, type = ?, cost = ?, tickets_available = ?
+WHERE id = ?;
+
+eventDelete:
+DELETE FROM EventEntity WHERE id = ?;
+
+eventCount:
+SELECT COUNT(*) FROM EventEntity;
+
+-- AdministrativeEntity
+CREATE TABLE AdministrativeEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    franchise_id INTEGER NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name_paternal TEXT,
+    last_name_maternal TEXT,
+    gender TEXT,
+    birth_date TEXT,
+    nationality TEXT,
+    tax_id TEXT,
+    nss TEXT,
+    phone TEXT,
+    email TEXT,
+    address_street TEXT,
+    address_zip TEXT,
+    emergency_contact_name TEXT,
+    emergency_contact_phone TEXT,
+    position TEXT NOT NULL,
+    salary REAL NOT NULL,
+    start_date TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id)
+);
+
+administrativeCreate:
+INSERT INTO AdministrativeEntity (franchise_id, first_name, last_name_paternal, last_name_maternal, gender, birth_date, nationality, tax_id, nss, phone, email, address_street, address_zip, emergency_contact_name, emergency_contact_phone, position, salary, start_date, active)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+administrativeSelectAll:
+SELECT * FROM AdministrativeEntity;
+
+administrativeSelectById:
+SELECT * FROM AdministrativeEntity WHERE id = ?;
+
+administrativeSelectByFranchiseId:
+SELECT * FROM AdministrativeEntity WHERE franchise_id = ?;
+
+administrativeUpdate:
+UPDATE AdministrativeEntity
+SET franchise_id = ?, first_name = ?, last_name_paternal = ?, last_name_maternal = ?, gender = ?, birth_date = ?, nationality = ?, tax_id = ?, nss = ?, phone = ?, email = ?, address_street = ?, address_zip = ?, emergency_contact_name = ?, emergency_contact_phone = ?, position = ?, salary = ?, start_date = ?, active = ?
+WHERE id = ?;
+
+administrativeDelete:
+DELETE FROM AdministrativeEntity WHERE id = ?;
+
+administrativeCount:
+SELECT COUNT(*) FROM AdministrativeEntity;
+
+-- TrialClassEntity
+CREATE TABLE TrialClassEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    franchise_id INTEGER NOT NULL,
+    student_id INTEGER,
+    adult_first_name TEXT,
+    adult_last_name_paternal TEXT,
+    adult_last_name_maternal TEXT,
+    phone TEXT,
+    email TEXT,
+    student_first_name TEXT NOT NULL,
+    student_last_name_paternal TEXT,
+    student_last_name_maternal TEXT,
+    age_years INTEGER NOT NULL,
+    age_months INTEGER NOT NULL,
+    discipline_id INTEGER NOT NULL,
+    request_date TEXT NOT NULL,
+    scheduled_date TEXT,
+    scheduled_time TEXT,
+    classroom_id INTEGER,
+    teacher_id INTEGER,
+    attendance INTEGER,
+    cancellation_reason TEXT,
+    how_discovered TEXT,
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id),
+    FOREIGN KEY(student_id) REFERENCES StudentEntity(id),
+    FOREIGN KEY(discipline_id) REFERENCES DisciplineEntity(id),
+    FOREIGN KEY(classroom_id) REFERENCES ClassroomEntity(id),
+    FOREIGN KEY(teacher_id) REFERENCES TeacherEntity(id)
+);
+
+trialClassCreate:
+INSERT INTO TrialClassEntity (franchise_id, student_id, adult_first_name, adult_last_name_paternal, adult_last_name_maternal, phone, email, student_first_name, student_last_name_paternal, student_last_name_maternal, age_years, age_months, discipline_id, request_date, scheduled_date, scheduled_time, classroom_id, teacher_id, attendance, cancellation_reason, how_discovered)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+trialClassSelectAll:
+SELECT * FROM TrialClassEntity;
+
+trialClassSelectById:
+SELECT * FROM TrialClassEntity WHERE id = ?;
+
+trialClassSelectByFranchiseId:
+SELECT * FROM TrialClassEntity WHERE franchise_id = ?;
+
+trialClassUpdate:
+UPDATE TrialClassEntity
+SET franchise_id = ?, student_id = ?, adult_first_name = ?, adult_last_name_paternal = ?, adult_last_name_maternal = ?, phone = ?, email = ?, student_first_name = ?, student_last_name_paternal = ?, student_last_name_maternal = ?, age_years = ?, age_months = ?, discipline_id = ?, request_date = ?, scheduled_date = ?, scheduled_time = ?, classroom_id = ?, teacher_id = ?, attendance = ?, cancellation_reason = ?, how_discovered = ?
+WHERE id = ?;
+
+trialClassDelete:
+DELETE FROM TrialClassEntity WHERE id = ?;
+
+trialClassCount:
+SELECT COUNT(*) FROM TrialClassEntity;
+
+-- TeacherReportEntity
+CREATE TABLE TeacherReportEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    teacher_id INTEGER NOT NULL,
+    franchise_id INTEGER NOT NULL,
+    report_type TEXT NOT NULL,
+    report_date TEXT NOT NULL,
+    observation TEXT,
+    FOREIGN KEY(teacher_id) REFERENCES TeacherEntity(id),
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id)
+);
+
+teacherReportCreate:
+INSERT INTO TeacherReportEntity (teacher_id, franchise_id, report_type, report_date, observation)
+VALUES (?, ?, ?, ?, ?);
+
+teacherReportSelectAll:
+SELECT * FROM TeacherReportEntity;
+
+teacherReportSelectById:
+SELECT * FROM TeacherReportEntity WHERE id = ?;
+
+teacherReportSelectByTeacherId:
+SELECT * FROM TeacherReportEntity WHERE teacher_id = ?;
+
+teacherReportUpdate:
+UPDATE TeacherReportEntity
+SET teacher_id = ?, franchise_id = ?, report_type = ?, report_date = ?, observation = ?
+WHERE id = ?;
+
+teacherReportDelete:
+DELETE FROM TeacherReportEntity WHERE id = ?;
+
+teacherReportCount:
+SELECT COUNT(*) FROM TeacherReportEntity;
+
+-- Count active franchises (is_new = 0 AND active = 1)
+activeBranchesCount:
+SELECT COUNT(*) FROM FranchiseEntity
+WHERE is_new = 0 AND active = 1;
