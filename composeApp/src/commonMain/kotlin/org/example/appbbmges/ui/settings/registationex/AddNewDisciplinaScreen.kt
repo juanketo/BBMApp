@@ -431,7 +431,11 @@ fun AddNewDisciplinaScreen(
                                         fontWeight = FontWeight.Bold
                                     )
 
-                                    Divider(color = AppColors.Primary.copy(alpha = 0.3f))
+                                    HorizontalDivider(
+                                        Modifier,
+                                        DividerDefaults.Thickness,
+                                        color = AppColors.Primary.copy(alpha = 0.3f)
+                                    )
 
                                     val disciplinesToConfirm = allLevels.value
                                         .filter { it.id in selectedLevelIds }

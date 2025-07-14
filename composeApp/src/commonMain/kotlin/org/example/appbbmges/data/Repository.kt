@@ -871,7 +871,7 @@ class Repository(private val database: AppDatabaseBaby) {
         val existingUsers = getUserCount()
         if (existingUsers == 0L) {
             insertUser(
-                    username = "Adminpresi12",
+                username = "Adminpresi12",
                 password = "Adminpresi12",
                 roleId = 1,
                 franchiseId = 1
