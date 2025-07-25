@@ -29,7 +29,7 @@ import org.example.appbbmges.StudentEntity
 import org.example.appbbmges.TeacherEntity
 import org.example.appbbmges.data.Repository
 import org.example.appbbmges.navigation.SimpleNavController
-import org.example.appbbmges.ui.usuarios.registation.AddAdministrativoScreen
+import org.example.appbbmges.ui.usuarios.registation.administrativeform.AddAdministrativoScreen
 import org.example.appbbmges.ui.usuarios.registation.studentsform.AddAlumnoScreen
 import org.example.appbbmges.ui.usuarios.registation.AddFranquiciatarioScreen
 import org.example.appbbmges.ui.usuarios.registation.AddProfesorScreen

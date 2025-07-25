@@ -4,45 +4,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -53,14 +22,16 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import appbbmges.composeapp.generated.resources.Res
 import appbbmges.composeapp.generated.resources.logoSystem
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.example.appbbmges.data.Repository
 import org.example.appbbmges.ui.usuarios.AppColors
+import org.example.appbbmges.DisciplineSelectAll
+import org.example.appbbmges.LevelEntity
 import org.jetbrains.compose.resources.painterResource
-import kotlinx.coroutines.delay
 
 enum class ClassFormStep {
     INFO,
@@ -81,75 +52,9 @@ data class ClassValidationResult(
     val studentsError: String? = null,
     val priceError: String? = null,
     val descriptionError: String? = null,
-    val globalError: String? = null
+    val disciplineError: String? = null,
+    val levelError: String? = null
 )
-
-class ClassValidator {
-    companion object {
-        fun validate(
-            className: String,
-            teacherName: String,
-            studentsCount: String,
-            price: String,
-            description: String
-        ): ClassValidationResult {
-            var isValid = true
-            var nameError: String? = null
-            var teacherError: String? = null
-            var studentsError: String? = null
-            var priceError: String? = null
-            var descriptionError: String? = null
-
-            if (className.isBlank()) {
-                nameError = "El nombre de la clase es obligatorio."
-                isValid = false
-            } else if (className.length < 3) {
-                nameError = "Mínimo 3 caracteres."
-                isValid = false
-            }
-
-            if (teacherName.isBlank()) {
-                teacherError = "El profesor es obligatorio."
-                isValid = false
-            }
-
-            val studentsNum = studentsCount.toIntOrNull()
-            if (studentsCount.isBlank()) {
-                studentsError = "El número de alumnos es obligatorio."
-                isValid = false
-            } else if (studentsNum == null || studentsNum <= 0) {
-                studentsError = "Debe ser un número válido mayor a 0."
-                isValid = false
-            }
-
-            val priceNum = price.toDoubleOrNull()
-            if (price.isBlank()) {
-                priceError = "El precio es obligatorio."
-                isValid = false
-            } else if (priceNum == null || priceNum < 0) {
-                priceError = "Debe ser un número válido y no negativo."
-                isValid = false
-            }
-
-            if (description.isBlank()) {
-                descriptionError = "La descripción es obligatoria."
-                isValid = false
-            } else if (description.length < 10) {
-                descriptionError = "Mínimo 10 caracteres."
-                isValid = false
-            }
-
-            return ClassValidationResult(
-                isValid = isValid,
-                nameError = nameError,
-                teacherError = teacherError,
-                studentsError = studentsError,
-                priceError = priceError,
-                descriptionError = descriptionError
-            )
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -159,55 +64,82 @@ fun AddNewClassMuestra(
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
+    val coroutineScope = rememberCoroutineScope()
 
+    // Estados del formulario
     var currentStep by remember { mutableStateOf(ClassFormStep.INFO) }
     var classFormState by remember { mutableStateOf<ClassFormState>(ClassFormState.Idle) }
 
+    // Estados para los campos del formulario
     var className by remember { mutableStateOf("") }
     var teacherName by remember { mutableStateOf("") }
     var studentsCount by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
 
-    val tipoOptions = listOf("PRIVADA", "PÚBLICA")
-    var selectedTipoExpanded by remember { mutableStateOf(false) }
-    var selectedTipo by remember { mutableStateOf(tipoOptions[0]) }
+    // Estados para los dropdowns
+    var expandedLevel by remember { mutableStateOf(false) }
+    var expandedDiscipline by remember { mutableStateOf(false) }
+    var selectedLevel by remember { mutableStateOf<LevelEntity?>(null) }
+    var selectedDiscipline by remember { mutableStateOf<DisciplineSelectAll?>(null) }
 
-    val ubicacionOptions = listOf("CLASE EN LÍNEA", "PRESENCIAL")
-    var selectedUbicacionExpanded by remember { mutableStateOf(false) }
-    var selectedUbicacion by remember { mutableStateOf(ubicacionOptions[0]) }
+    // Estados para los datos
+    val levels = remember { mutableStateOf<List<LevelEntity>>(emptyList()) }
+    val disciplines = remember { mutableStateOf<List<DisciplineSelectAll>>(emptyList()) }
 
-    val estadoOptions = listOf("PLANIFICADO", "ACTIVO")
-    var selectedEstadoExpanded by remember { mutableStateOf(false) }
-    var selectedEstado by remember { mutableStateOf(estadoOptions[0]) }
+    // Cargar datos iniciales
+    LaunchedEffect(Unit) {
+        levels.value = repository.getAllLevels()
+        disciplines.value = repository.getAllDisciplines()
+    }
 
-    val tipoClaseOptions = listOf("Intensivo", "Regular", "Taller")
-    var selectedTipoClaseExpanded by remember { mutableStateOf(false) }
-    var selectedTipoClase by remember { mutableStateOf(tipoClaseOptions[0]) }
+    // Filtrar disciplinas basadas en el nivel seleccionado
+    val filteredDisciplines = remember(selectedLevel, disciplines.value) {
+        if (selectedLevel == null) {
+            disciplines.value
+        } else {
+            disciplines.value.filter { it.level_id == selectedLevel?.id }
+        }
+    }
 
-    val estiloOptions = listOf("Ballet", "Hip-Hop", "Jazz", "Contemporáneo", "Flamenco")
-    var selectedEstiloExpanded by remember { mutableStateOf(false) }
-    var selectedEstilo by remember { mutableStateOf(estiloOptions[0]) }
-
-    val nivelOptions = listOf("Principiante", "Intermedio", "Avanzado", "Profesional")
-    var selectedNivelExpanded by remember { mutableStateOf(false) }
-    var selectedNivel by remember { mutableStateOf(nivelOptions[0]) }
-
+    // Validación
     var validationResult by remember { mutableStateOf(ClassValidationResult(true)) }
 
     fun validateForm(): Boolean {
-        val result = ClassValidator.validate(
-            className,
-            teacherName,
-            studentsCount,
-            price,
-            description
+        val result = ClassValidationResult(
+            isValid = true,
+            nameError = if (className.isBlank()) "Nombre de clase requerido" else null,
+            teacherError = if (teacherName.isBlank()) "Profesor requerido" else null,
+            studentsError = when {
+                studentsCount.isBlank() -> "Número de alumnos requerido"
+                studentsCount.toIntOrNull() == null -> "Número inválido"
+                studentsCount.toInt() <= 0 -> "Debe ser mayor a 0"
+                else -> null
+            },
+            priceError = when {
+                price.isBlank() -> "Precio requerido"
+                price.toDoubleOrNull() == null -> "Precio inválido"
+                price.toDouble() < 0 -> "Debe ser positivo"
+                else -> null
+            },
+            descriptionError = if (description.isBlank()) "Descripción requerida" else null,
+            disciplineError = if (selectedDiscipline == null) "Seleccione una disciplina" else null,
+            levelError = if (selectedLevel == null) "Seleccione un nivel" else null
         )
-        validationResult = result
-        return result.isValid
+
+        validationResult = result.copy(
+            isValid = result.nameError == null &&
+                    result.teacherError == null &&
+                    result.studentsError == null &&
+                    result.priceError == null &&
+                    result.descriptionError == null &&
+                    result.disciplineError == null &&
+                    result.levelError == null
+        )
+
+        return validationResult.isValid
     }
 
-    @Composable
     fun proceedToNext() {
         when (currentStep) {
             ClassFormStep.INFO -> {
@@ -217,13 +149,18 @@ fun AddNewClassMuestra(
             }
             ClassFormStep.CONFIRMATION -> {
                 classFormState = ClassFormState.Loading
-                LaunchedEffect(Unit) {
+                coroutineScope.launch {
                     try {
+                        // Simular guardado en base de datos
                         delay(1000)
+
+                        // Aquí iría la lógica real para guardar la clase
+                        // repository.insertSchedule(...)
+
                         classFormState = ClassFormState.Success
                         onDismiss()
                     } catch (e: Exception) {
-                        classFormState = ClassFormState.Error("Error al registrar la clase: ${e.message}")
+                        classFormState = ClassFormState.Error("Error al guardar: ${e.message}")
                     }
                 }
             }
@@ -264,10 +201,9 @@ fun AddNewClassMuestra(
                     )
 
                     Text(
-                        text = "Registro de Nueva Clase",
+                        text = "Agendar Nueva Clase",
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        fontWeight = FontWeight.Bold
                     )
 
                     LinearProgressIndicator(
@@ -282,273 +218,233 @@ fun AddNewClassMuestra(
                             ClassFormStep.CONFIRMATION -> "Paso 2: Confirmación"
                         },
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        fontWeight = FontWeight.Bold
                     )
 
                     Spacer(Modifier.height(16.dp))
 
                     when (currentStep) {
                         ClassFormStep.INFO -> {
+                            // Campo Nombre de Clase
                             OutlinedTextField(
                                 value = className,
                                 onValueChange = {
                                     className = it
-                                    if (validationResult.nameError != null) validationResult = validationResult.copy(nameError = null)
+                                    if (validationResult.nameError != null) {
+                                        validationResult = validationResult.copy(nameError = null)
+                                    }
                                 },
                                 label = { Text("Nombre de la Clase") },
                                 isError = validationResult.nameError != null,
-                                supportingText = { validationResult.nameError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
+                                supportingText = {
+                                    validationResult.nameError?.let {
+                                        Text(it, color = MaterialTheme.colorScheme.error)
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
+                                keyboardActions = KeyboardActions(
+                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                )
                             )
 
+                            Spacer(Modifier.height(12.dp))
+
+                            // Campo Profesor
                             OutlinedTextField(
                                 value = teacherName,
                                 onValueChange = {
                                     teacherName = it
-                                    if (validationResult.teacherError != null) validationResult = validationResult.copy(teacherError = null)
+                                    if (validationResult.teacherError != null) {
+                                        validationResult = validationResult.copy(teacherError = null)
+                                    }
                                 },
                                 label = { Text("Profesor") },
                                 isError = validationResult.teacherError != null,
-                                supportingText = { validationResult.teacherError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
+                                supportingText = {
+                                    validationResult.teacherError?.let {
+                                        Text(it, color = MaterialTheme.colorScheme.error)
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
+                                keyboardActions = KeyboardActions(
+                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                )
                             )
 
+                            Spacer(Modifier.height(12.dp))
+
+                            // Campo Número de Alumnos
                             OutlinedTextField(
                                 value = studentsCount,
-                                onValueChange = { newValue ->
-                                    if (newValue.all { it.isDigit() } || newValue.isEmpty()) {
-                                        studentsCount = newValue
-                                        if (validationResult.studentsError != null) validationResult = validationResult.copy(studentsError = null)
+                                onValueChange = {
+                                    if (it.all { char -> char.isDigit() } || it.isEmpty()) {
+                                        studentsCount = it
+                                        if (validationResult.studentsError != null) {
+                                            validationResult = validationResult.copy(studentsError = null)
+                                        }
                                     }
                                 },
-                                label = { Text("Alumnos") },
+                                label = { Text("Número de Alumnos") },
                                 isError = validationResult.studentsError != null,
-                                supportingText = { validationResult.studentsError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+                                supportingText = {
+                                    validationResult.studentsError?.let {
+                                        Text(it, color = MaterialTheme.colorScheme.error)
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                ),
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true
                             )
 
+                            Spacer(Modifier.height(12.dp))
+
+                            // Campo Descripción
                             OutlinedTextField(
                                 value = description,
                                 onValueChange = {
                                     description = it
-                                    if (validationResult.descriptionError != null) validationResult = validationResult.copy(descriptionError = null)
+                                    if (validationResult.descriptionError != null) {
+                                        validationResult = validationResult.copy(descriptionError = null)
+                                    }
                                 },
                                 label = { Text("Descripción") },
                                 isError = validationResult.descriptionError != null,
-                                supportingText = { validationResult.descriptionError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
-                                modifier = Modifier.fillMaxWidth(),
+                                supportingText = {
+                                    validationResult.descriptionError?.let {
+                                        Text(it, color = MaterialTheme.colorScheme.error)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(100.dp),
                                 maxLines = 3,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
+                                keyboardActions = KeyboardActions(
+                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                )
                             )
 
-                            ExposedDropdownMenuBox(
-                                expanded = selectedTipoExpanded,
-                                onExpandedChange = { selectedTipoExpanded = !selectedTipoExpanded },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                OutlinedTextField(
-                                    value = selectedTipo,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    label = { Text("Tipo") },
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = selectedTipoExpanded) },
-                                    modifier = Modifier
-                                        .menuAnchor()
-                                        .fillMaxWidth()
-                                )
-                                ExposedDropdownMenu(
-                                    expanded = selectedTipoExpanded,
-                                    onDismissRequest = { selectedTipoExpanded = false }
-                                ) {
-                                    tipoOptions.forEach { item ->
-                                        DropdownMenuItem(
-                                            text = { Text(item) },
-                                            onClick = {
-                                                selectedTipo = item
-                                                selectedTipoExpanded = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
+                            Spacer(Modifier.height(12.dp))
 
-                            ExposedDropdownMenuBox(
-                                expanded = selectedUbicacionExpanded,
-                                onExpandedChange = { selectedUbicacionExpanded = !selectedUbicacionExpanded },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                OutlinedTextField(
-                                    value = selectedUbicacion,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    label = { Text("Ubicación") },
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = selectedUbicacionExpanded) },
-                                    modifier = Modifier
-                                        .menuAnchor()
-                                        .fillMaxWidth()
-                                )
-                                ExposedDropdownMenu(
-                                    expanded = selectedUbicacionExpanded,
-                                    onDismissRequest = { selectedUbicacionExpanded = false }
-                                ) {
-                                    ubicacionOptions.forEach { item ->
-                                        DropdownMenuItem(
-                                            text = { Text(item) },
-                                            onClick = {
-                                                selectedUbicacion = item
-                                                selectedUbicacionExpanded = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
+                            // Campo Precio
                             OutlinedTextField(
                                 value = price,
-                                onValueChange = { newValue ->
-                                    if (newValue.all { it.isDigit() || it == '.' } || newValue.isEmpty()) {
-                                        price = newValue
-                                        if (validationResult.priceError != null) validationResult = validationResult.copy(priceError = null)
+                                onValueChange = {
+                                    if (it.all { char -> char.isDigit() || char == '.' } || it.isEmpty()) {
+                                        price = it
+                                        if (validationResult.priceError != null) {
+                                            validationResult = validationResult.copy(priceError = null)
+                                        }
                                     }
                                 },
                                 label = { Text("Precio ($)") },
                                 isError = validationResult.priceError != null,
-                                supportingText = { validationResult.priceError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                                supportingText = {
+                                    validationResult.priceError?.let {
+                                        Text(it, color = MaterialTheme.colorScheme.error)
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = { focusManager.clearFocus() }
+                                ),
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true
                             )
 
-                            ExposedDropdownMenuBox(
-                                expanded = selectedEstadoExpanded,
-                                onExpandedChange = { selectedEstadoExpanded = !selectedEstadoExpanded },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                OutlinedTextField(
-                                    value = selectedEstado,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    label = { Text("Estado") },
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = selectedEstadoExpanded) },
-                                    modifier = Modifier
-                                        .menuAnchor()
-                                        .fillMaxWidth()
-                                )
-                                ExposedDropdownMenu(
-                                    expanded = selectedEstadoExpanded,
-                                    onDismissRequest = { selectedEstadoExpanded = false }
-                                ) {
-                                    estadoOptions.forEach { item ->
-                                        DropdownMenuItem(
-                                            text = { Text(item) },
-                                            onClick = {
-                                                selectedEstado = item
-                                                selectedEstadoExpanded = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
+                            Spacer(Modifier.height(16.dp))
 
+                            // Dropdown para Niveles
                             ExposedDropdownMenuBox(
-                                expanded = selectedTipoClaseExpanded,
-                                onExpandedChange = { selectedTipoClaseExpanded = !selectedTipoClaseExpanded },
-                                modifier = Modifier.fillMaxWidth()
+                                expanded = expandedLevel,
+                                onExpandedChange = { expandedLevel = it }
                             ) {
                                 OutlinedTextField(
-                                    value = selectedTipoClase,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    label = { Text("Tipo de Clase") },
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = selectedTipoClaseExpanded) },
-                                    modifier = Modifier
-                                        .menuAnchor()
-                                        .fillMaxWidth()
-                                )
-                                ExposedDropdownMenu(
-                                    expanded = selectedTipoClaseExpanded,
-                                    onDismissRequest = { selectedTipoClaseExpanded = false }
-                                ) {
-                                    tipoClaseOptions.forEach { item ->
-                                        DropdownMenuItem(
-                                            text = { Text(item) },
-                                            onClick = {
-                                                selectedTipoClase = item
-                                                selectedTipoClaseExpanded = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            ExposedDropdownMenuBox(
-                                expanded = selectedEstiloExpanded,
-                                onExpandedChange = { selectedEstiloExpanded = !selectedEstiloExpanded },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                OutlinedTextField(
-                                    value = selectedEstilo,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    label = { Text("Estilo") },
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = selectedEstiloExpanded) },
-                                    modifier = Modifier
-                                        .menuAnchor()
-                                        .fillMaxWidth()
-                                )
-                                ExposedDropdownMenu(
-                                    expanded = selectedEstiloExpanded,
-                                    onDismissRequest = { selectedEstiloExpanded = false }
-                                ) {
-                                    estiloOptions.forEach { item ->
-                                        DropdownMenuItem(
-                                            text = { Text(item) },
-                                            onClick = {
-                                                selectedEstilo = item
-                                                selectedEstiloExpanded = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            ExposedDropdownMenuBox(
-                                expanded = selectedNivelExpanded,
-                                onExpandedChange = { selectedNivelExpanded = !selectedNivelExpanded },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                OutlinedTextField(
-                                    value = selectedNivel,
+                                    value = selectedLevel?.name ?: "Seleccione nivel",
                                     onValueChange = {},
                                     readOnly = true,
                                     label = { Text("Nivel") },
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = selectedNivelExpanded) },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLevel) },
                                     modifier = Modifier
                                         .menuAnchor()
-                                        .fillMaxWidth()
+                                        .fillMaxWidth(),
+                                    isError = validationResult.levelError != null,
+                                    supportingText = {
+                                        validationResult.levelError?.let {
+                                            Text(it, color = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
                                 )
                                 ExposedDropdownMenu(
-                                    expanded = selectedNivelExpanded,
-                                    onDismissRequest = { selectedNivelExpanded = false }
+                                    expanded = expandedLevel,
+                                    onDismissRequest = { expandedLevel = false }
                                 ) {
-                                    nivelOptions.forEach { item ->
+                                    levels.value.forEach { level ->
                                         DropdownMenuItem(
-                                            text = { Text(item) },
+                                            text = { Text(level.name) },
                                             onClick = {
-                                                selectedNivel = item
-                                                selectedNivelExpanded = false
+                                                selectedLevel = level
+                                                selectedDiscipline = null // Resetear disciplina al cambiar nivel
+                                                expandedLevel = false
+                                                if (validationResult.levelError != null) {
+                                                    validationResult = validationResult.copy(levelError = null)
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(Modifier.height(12.dp))
+
+                            // Dropdown para Disciplinas
+                            ExposedDropdownMenuBox(
+                                expanded = expandedDiscipline,
+                                onExpandedChange = { expandedDiscipline = it }
+                            ) {
+                                OutlinedTextField(
+                                    value = selectedDiscipline?.let { "${it.name} (${it.level_name})" } ?: "Seleccione disciplina",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Disciplina") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDiscipline) },
+                                    modifier = Modifier
+                                        .menuAnchor()
+                                        .fillMaxWidth(),
+                                    enabled = selectedLevel != null,
+                                    isError = validationResult.disciplineError != null,
+                                    supportingText = {
+                                        validationResult.disciplineError?.let {
+                                            Text(it, color = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = expandedDiscipline,
+                                    onDismissRequest = { expandedDiscipline = false }
+                                ) {
+                                    filteredDisciplines.forEach { discipline ->
+                                        DropdownMenuItem(
+                                            text = { Text("${discipline.name} (${discipline.level_name})") },
+                                            onClick = {
+                                                selectedDiscipline = discipline
+                                                expandedDiscipline = false
+                                                if (validationResult.disciplineError != null) {
+                                                    validationResult = validationResult.copy(disciplineError = null)
+                                                }
                                             }
                                         )
                                     }
@@ -557,6 +453,7 @@ fun AddNewClassMuestra(
                         }
 
                         ClassFormStep.CONFIRMATION -> {
+                            // Vista de confirmación
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
@@ -568,56 +465,53 @@ fun AddNewClassMuestra(
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Text(
-                                        text = "Confirmar Registro de Clase",
+                                        text = "Confirmar Datos de la Clase",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
                                     )
 
                                     Divider(color = AppColors.Primary.copy(alpha = 0.3f))
 
-                                    ConfirmationItem(label = "Nombre:", value = className)
-                                    ConfirmationItem(label = "Profesor:", value = teacherName)
-                                    ConfirmationItem(label = "Alumnos:", value = studentsCount)
-                                    ConfirmationItem(label = "Descripción:", value = description)
-                                    ConfirmationItem(label = "Tipo:", value = selectedTipo)
-                                    ConfirmationItem(label = "Ubicación:", value = selectedUbicacion)
-                                    ConfirmationItem(label = "Precio:", value = "$$price")
-                                    ConfirmationItem(label = "Estado:", value = selectedEstado)
-                                    ConfirmationItem(label = "Tipo de Clase:", value = selectedTipoClase)
-                                    ConfirmationItem(label = "Estilo:", value = selectedEstilo)
-                                    ConfirmationItem(label = "Nivel:", value = selectedNivel)
-                                }
-                            }
-                            Spacer(Modifier.height(16.dp))
-
-                            if (classFormState is ClassFormState.Error) {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.errorContainer
-                                    ),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Column(modifier = Modifier.padding(12.dp)) {
-                                        Text(
-                                            text = "Error de registro:",
-                                            color = MaterialTheme.colorScheme.onErrorContainer,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = (classFormState as ClassFormState.Error).message,
-                                            color = MaterialTheme.colorScheme.onErrorContainer,
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
+                                    // Mostrar todos los datos ingresados
+                                    ConfirmationRow("Nombre:", className)
+                                    ConfirmationRow("Profesor:", teacherName)
+                                    ConfirmationRow("Alumnos:", studentsCount)
+                                    ConfirmationRow("Descripción:", description)
+                                    ConfirmationRow("Precio:", "$$price")
+                                    selectedLevel?.let {
+                                        ConfirmationRow("Nivel:", it.name)
+                                    }
+                                    selectedDiscipline?.let {
+                                        ConfirmationRow("Disciplina:", "${it.name} (${it.level_name})")
                                     }
                                 }
+                            }
+
+                            // Mostrar estado de carga o error
+                            when (classFormState) {
+                                is ClassFormState.Loading -> {
+                                    Spacer(Modifier.height(16.dp))
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                                        color = AppColors.Primary
+                                    )
+                                }
+                                is ClassFormState.Error -> {
+                                    Spacer(Modifier.height(16.dp))
+                                    Text(
+                                        text = (classFormState as ClassFormState.Error).message,
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                                else -> {}
                             }
                         }
                     }
 
                     Spacer(Modifier.weight(1f))
 
+                    // Botones de navegación
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -651,7 +545,7 @@ fun AddNewClassMuestra(
                         }
 
                         Button(
-                            onClick = {},
+                            onClick = { proceedToNext() },
                             modifier = Modifier.weight(1f),
                             enabled = classFormState !is ClassFormState.Loading,
                             colors = ButtonDefaults.buttonColors(
@@ -660,20 +554,12 @@ fun AddNewClassMuestra(
                             ),
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            if (classFormState is ClassFormState.Loading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Text(
-                                    when (currentStep) {
-                                        ClassFormStep.INFO -> "Siguiente"
-                                        ClassFormStep.CONFIRMATION -> "Registrar"
-                                    }
-                                )
-                            }
+                            Text(
+                                when (currentStep) {
+                                    ClassFormStep.INFO -> "Siguiente"
+                                    ClassFormStep.CONFIRMATION -> "Confirmar"
+                                }
+                            )
                         }
                     }
                 }
@@ -701,19 +587,19 @@ private fun BackgroundLogo() {
 }
 
 @Composable
-fun ConfirmationItem(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth()) {
+private fun ConfirmationRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            fontWeight = FontWeight.Bold
         )
-        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            style = MaterialTheme.typography.bodyMedium
         )
     }
 }
