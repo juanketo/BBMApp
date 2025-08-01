@@ -25,8 +25,8 @@ import org.example.appbbmges.ui.settings.registationex.AddNewPromoScreen
 import org.example.appbbmges.ui.settings.registationex.AddNivelScreen
 import org.example.appbbmges.ui.settings.registationex.AddProductoScreen
 import org.example.appbbmges.ui.settings.registationex.AddSucursalScreen
-
-
+import org.example.appbbmges.ui.settings.registationex.AddCuotasScreen
+import org.example.appbbmges.ui.settings.registationex.AddSalonScreen
 
 @Composable
 fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
@@ -41,35 +41,46 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
             when (selectedFormType) {
                 "Sucursal" -> {
                     AddSucursalScreen(
-                    onDismiss = { selectedFormType = null },
-                    repository = repository
+                        onDismiss = { selectedFormType = null },
+                        repository = repository
                     )
                 }
                 "Nivel" -> {
                     AddNivelScreen(
-                    onDismiss = { selectedFormType = null },
-                    repository = repository
+                        onDismiss = { selectedFormType = null },
+                        repository = repository
                     )
                 }
                 "Producto" -> {
                     AddProductoScreen(
-                    onDismiss = { selectedFormType = null },
-                    repository = repository
+                        onDismiss = { selectedFormType = null },
+                        repository = repository
                     )
                 }
                 "Disciplina" -> {
                     AddNewDisciplinaScreen(
-                    onDismiss = { selectedFormType = null },
-                    repository = repository
+                        onDismiss = { selectedFormType = null },
+                        repository = repository
                     )
                 }
                 "Promocion" -> {
                     AddNewPromoScreen(
-                    onDismiss = { selectedFormType = null },
-                    repository = repository
+                        onDismiss = { selectedFormType = null },
+                        repository = repository
                     )
                 }
-
+                "Cuotas" -> {
+                    AddCuotasScreen(
+                        onDismiss = { selectedFormType = null },
+                        repository = repository
+                    )
+                }
+                "Salon" -> {
+                    AddSalonScreen(
+                        onDismiss = { selectedFormType = null },
+                        repository = repository
+                    )
+                }
             }
         } else {
 
@@ -86,13 +97,13 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF333333),
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 24.dp)
                 )
 
                 Column(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Fila 1
+                    // Fila 1: Sucursal y Nivel
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -112,7 +123,7 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
                             ConfigurationCard(
                                 icon = Icons.Outlined.School,
                                 title = "Agregar Nuevo Nivel",
-                                backgroundColor = Color(0xFFFFE0B2),
+                                backgroundColor = Color(0xFFFFE0B2), // Naranja claro
                                 iconColor = Color(0xFFFF9800)
                             ) {
                                 selectedFormType = "Nivel"
@@ -120,6 +131,7 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
                         }
                     }
 
+                    // Fila 2: Producto y Disciplina
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -128,7 +140,7 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
                             ConfigurationCard(
                                 icon = Icons.Outlined.Inventory,
                                 title = "Agregar Nuevo Producto",
-                                backgroundColor = Color(0xFFC8E6C9),
+                                backgroundColor = Color(0xFFC8E6C9), // Verde claro
                                 iconColor = Color(0xFF4CAF50)
                             ) {
                                 selectedFormType = "Producto"
@@ -139,7 +151,7 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
                             ConfigurationCard(
                                 icon = Icons.Outlined.SportsGymnastics,
                                 title = "Agregar Nueva Disciplina",
-                                backgroundColor = Color(0xFFDCEDC8),
+                                backgroundColor = Color(0xFFDCEDC8), // Verde lima claro
                                 iconColor = Color(0xFF8BC34A)
                             ) {
                                 selectedFormType = "Disciplina"
@@ -147,7 +159,7 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
                         }
                     }
 
-                    // Fila 3
+                    // Fila 3: Promoción y Cuotas
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -163,6 +175,35 @@ fun SettingsScreen(navController: SimpleNavController, repository: Repository) {
                             }
                         }
 
+                        Box(modifier = Modifier.weight(1f)) {
+                            ConfigurationCard(
+                                icon = Icons.Outlined.Payments,
+                                title = "Agregar Nueva Cuota",
+                                backgroundColor = Color(0xFFE1BEE7), // Morado claro
+                                iconColor = Color(0xFF9C27B0)
+                            ) {
+                                selectedFormType = "Cuotas"
+                            }
+                        }
+                    }
+
+                    // Fila 4: Salón y espacio vacío
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            ConfigurationCard(
+                                icon = Icons.Outlined.MeetingRoom,
+                                title = "Agregar Nuevo Salón",
+                                backgroundColor = Color(0xFFFFF9C4), // Amarillo claro
+                                iconColor = Color(0xFFFFC107)
+                            ) {
+                                selectedFormType = "Salon"
+                            }
+                        }
+
+                        // Espacio vacío para mantener simetría
                         Box(modifier = Modifier.weight(1f)) {
                             Spacer(modifier = Modifier.height(140.dp))
                         }

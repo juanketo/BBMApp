@@ -27,10 +27,7 @@ import org.example.appbbmges.ui.dashboard.DashboardScreen
 import org.example.appbbmges.ui.diciplinashorarios.DisciplinasHorariosScreen
 import org.example.appbbmges.ui.eventospromociones.EventosPromocionesScreen.EventosPromocionesScreen
 import org.example.appbbmges.ui.franquicias.FranquiciasScreen
-import org.example.appbbmges.ui.gastosnomina.GastosNominaScreen
-import org.example.appbbmges.ui.pagoscaja.PagosCajaScreen
 import org.example.appbbmges.ui.productos.ProductosScreen
-import org.example.appbbmges.ui.reportes.ReportesScreen
 import org.example.appbbmges.ui.settings.SettingsScreen
 import org.example.appbbmges.ui.usuarios.UsuariosScreen
 import org.jetbrains.compose.resources.painterResource

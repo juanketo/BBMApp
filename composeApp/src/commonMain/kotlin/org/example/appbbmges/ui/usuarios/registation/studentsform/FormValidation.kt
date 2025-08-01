@@ -1,5 +1,4 @@
 package org.example.appbbmges.ui.usuarios.registation.studentsform
-
 object FormValidation {
     fun validatePersonalInfo(data: StudentFormData): FormErrors {
         return FormErrors(
@@ -21,11 +20,12 @@ object FormValidation {
     }
 
     private fun validateName(name: String, fieldName: String, required: Boolean): String? {
-        if (required && name.isEmpty()) return "El $fieldName es obligatorio."
+        println("Validando $fieldName: '$name'")
+        if (required && name.isBlank()) return "El $fieldName es obligatorio."
         if (name.isNotBlank()) {
             if (name.length !in 2..50) return "El $fieldName debe tener entre 2 y 50 caracteres."
             if (name.any { it.isDigit() }) return "El $fieldName no puede contener números."
-            if (!name.matches("^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$".toRegex())) return "El $fieldName solo puede contener letras y espacios."
+            if (!name.matches("^[A-Za-zÀ-ÿ ]+$".toRegex())) return "El $fieldName solo puede contener letras y espacios."
         }
         return null
     }

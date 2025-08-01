@@ -43,7 +43,8 @@ object CURPGenerator {
         birthDate: String,
         gender: String
     ): String {
-        if (firstName.isEmpty() || lastNamePaternal.isEmpty() || birthDate.length != 10) return ""
+        println("Generando CURP para: $firstName $lastNamePaternal $lastNameMaternal")
+        if (firstName.isBlank() || lastNamePaternal.isBlank() || birthDate.length != 10) return ""
         val parts = birthDate.split("/")
         if (parts.size != 3) return ""
         val day = parts[0].padStart(2, '0')
@@ -53,8 +54,9 @@ object CURPGenerator {
         val consonants = "BCDFGHJKLMNPQRSTVWXYZ"
         val firstLetter = lastNamePaternal.first().uppercaseChar()
         val firstVowel = lastNamePaternal.drop(1).firstOrNull { it.uppercaseChar() in vowels }?.uppercaseChar() ?: 'X'
-        val secondLetter = if (lastNameMaternal.isNotEmpty()) lastNameMaternal.first().uppercaseChar() else 'X'
-        val thirdLetter = firstName.split(" ").first().first().uppercaseChar()
+        val secondLetter = if (lastNameMaternal.isNotBlank()) lastNameMaternal.first().uppercaseChar() else 'X'
+        val cleanFirstName = firstName.trim().split(" ").firstOrNull { it.isNotBlank() } ?: return ""
+        val thirdLetter = cleanFirstName.first().uppercaseChar()
         val sexLetter = when (gender.lowercase()) {
             "masculino", "hombre", "m" -> "H"
             "femenino", "mujer", "f" -> "M"
@@ -62,10 +64,10 @@ object CURPGenerator {
         }
         val state = "DF"
         val firstConsonant = lastNamePaternal.drop(1).firstOrNull { it.uppercaseChar() in consonants }?.uppercaseChar() ?: 'X'
-        val secondConsonant = if (lastNameMaternal.isNotEmpty()) {
+        val secondConsonant = if (lastNameMaternal.isNotBlank()) {
             lastNameMaternal.drop(1).firstOrNull { it.uppercaseChar() in consonants }?.uppercaseChar() ?: 'X'
         } else 'X'
-        val thirdConsonant = firstName.split(" ").first().drop(1).firstOrNull { it.uppercaseChar() in consonants }?.uppercaseChar() ?: 'X'
+        val thirdConsonant = cleanFirstName.drop(1).firstOrNull { it.uppercaseChar() in consonants }?.uppercaseChar() ?: 'X'
         val randomDigits = "01"
         return "$firstLetter$firstVowel$secondLetter$thirdLetter$year$month${day}$sexLetter$state$firstConsonant$secondConsonant$thirdConsonant$randomDigits"
     }
@@ -73,7 +75,9 @@ object CURPGenerator {
 
 object TextFormatters {
     fun formatName(input: String): String {
-        return input.trim().split("\\s+".toRegex()).joinToString(" ") {
+        println("Formateando nombre: '$input'")
+        if (input.isBlank()) return ""
+        return input.trim().split("\\s+".toRegex()).filter { it.isNotBlank() }.joinToString(" ") {
             it.lowercase().replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase() else char.toString() }
         }
     }
