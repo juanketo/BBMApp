@@ -37,7 +37,9 @@ fun PersonalInfoStep(
         ) {
             CustomOutlinedTextField(
                 value = data.firstName,
-                onValueChange = { onDataChange(data.copy(firstName = TextFormatters.formatName(it))) },
+                onValueChange = { newValue ->
+                    onDataChange(data.copy(firstName = TextFormatters.cleanAndFormatNameInput(newValue)))
+                },
                 label = "Nombre(s)",
                 placeholder = "Nombre(s)",
                 modifier = Modifier.weight(1f),
@@ -46,7 +48,9 @@ fun PersonalInfoStep(
             )
             CustomOutlinedTextField(
                 value = data.lastNamePaternal,
-                onValueChange = { onDataChange(data.copy(lastNamePaternal = TextFormatters.formatName(it))) },
+                onValueChange = { newValue ->
+                    onDataChange(data.copy(lastNamePaternal = TextFormatters.cleanAndFormatNameInput(newValue)))
+                },
                 label = "Apellido Paterno",
                 placeholder = "Apellido Paterno",
                 modifier = Modifier.weight(1f),
@@ -55,7 +59,9 @@ fun PersonalInfoStep(
             )
             CustomOutlinedTextField(
                 value = data.lastNameMaternal,
-                onValueChange = { onDataChange(data.copy(lastNameMaternal = TextFormatters.formatName(it))) },
+                onValueChange = { newValue ->
+                    onDataChange(data.copy(lastNameMaternal = TextFormatters.cleanAndFormatNameInput(newValue)))
+                },
                 label = "Apellido Materno",
                 placeholder = "Apellido Materno",
                 modifier = Modifier.weight(1f),
@@ -207,14 +213,14 @@ fun AdditionalInfoStep(
         ) {
             CustomOutlinedTextField(
                 value = data.parentFatherName,
-                onValueChange = { onDataChange(data.copy(parentFatherName = TextFormatters.formatName(it))) },
+                onValueChange = { onDataChange(data.copy(parentFatherName = TextFormatters.cleanAndFormatNameInput(it))) },
                 label = "Nombre del Padre",
                 placeholder = "Opcional",
                 modifier = Modifier.weight(1f)
             )
             CustomOutlinedTextField(
                 value = data.parentMotherName,
-                onValueChange = { onDataChange(data.copy(parentMotherName = TextFormatters.formatName(it))) },
+                onValueChange = { onDataChange(data.copy(parentMotherName = TextFormatters.cleanAndFormatNameInput(it))) },
                 label = "Nombre de la Madre",
                 placeholder = "Opcional",
                 modifier = Modifier.weight(1f)

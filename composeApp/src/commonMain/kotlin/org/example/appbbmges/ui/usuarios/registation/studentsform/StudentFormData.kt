@@ -31,7 +31,14 @@ data class FormErrors(
     val addressStreet: String? = null,
     val addressZip: String? = null,
     val general: String? = null
-)
+) {
+    val isValid: Boolean
+        get() = firstName == null && lastNamePaternal == null &&
+                lastNameMaternal == null && birthDate == null &&
+                curp == null && phone == null && email == null &&
+                addressStreet == null && addressZip == null &&
+                general == null
+}
 
 enum class StudentFormStep {
     PERSONAL_INFO,

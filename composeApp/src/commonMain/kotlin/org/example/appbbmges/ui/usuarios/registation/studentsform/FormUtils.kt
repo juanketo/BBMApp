@@ -74,11 +74,60 @@ object CURPGenerator {
 }
 
 object TextFormatters {
+    /**
+     * Formatea un nombre o apellido para que cada palabra comience con mayúscula y no tenga espacios extra.
+     */
     fun formatName(input: String): String {
-        println("Formateando nombre: '$input'")
         if (input.isBlank()) return ""
-        return input.trim().split("\\s+".toRegex()).filter { it.isNotBlank() }.joinToString(" ") {
-            it.lowercase().replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase() else char.toString() }
-        }
+        return input.trim()
+            .split("\\s+".toRegex())
+            .filter { it.isNotBlank() }
+            .joinToString(" ") { word ->
+                word.lowercase().replaceFirstChar { it.titlecase() }
+            }
+    }
+
+    /**
+     * Limpia y formatea la entrada del usuario en tiempo real para nombres.
+     * Permite letras y un solo espacio entre palabras, y formatea cada palabra.
+     * ESTA ES LA FUNCIÓN PRINCIPAL QUE SOLUCIONA EL PROBLEMA
+     */
+    fun cleanAndFormatNameInput(input: String): String {
+        // Filtrar solo letras y espacios
+        val filtered = input.filter { it.isLetter() || it.isWhitespace() }
+
+        // Reemplazar múltiples espacios con uno solo
+        val singleSpaced = filtered.replace("\\s{2,}".toRegex(), " ")
+
+        // No permitir espacios al inicio
+        val noLeadingSpace = if (singleSpaced.startsWith(" ")) {
+            singleSpaced.substring(1)
+        } else singleSpaced
+
+        // Formatear en tiempo real
+        return formatRealTime(noLeadingSpace)
+    }
+
+    /**
+     * Formatea en tiempo real mientras el usuario escribe
+     */
+    private fun formatRealTime(input: String): String {
+        if (input.isBlank()) return ""
+
+        val words = input.split(" ")
+        return words.mapIndexed { index, word ->
+            if (word.isNotBlank()) {
+                // Formatear todas las palabras
+                word.lowercase().replaceFirstChar { it.titlecase() }
+            } else word
+        }.joinToString(" ")
+    }
+
+    /**
+     * Versión simple para limpiar entrada (mantener para compatibilidad)
+     */
+    fun cleanNameInput(input: String): String {
+        val filtered = input.filter { it.isLetter() || it.isWhitespace() }
+        return filtered.replace("\\s{2,}".toRegex(), " ")
     }
 }

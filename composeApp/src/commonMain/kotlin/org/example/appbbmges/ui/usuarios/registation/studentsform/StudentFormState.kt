@@ -30,12 +30,7 @@ class StudentFormState {
             StudentFormStep.ADDRESS_INFO -> FormValidation.validateAddressInfo(data)
             else -> FormErrors()
         }
-        return errors.let {
-            it.firstName == null && it.lastNamePaternal == null &&
-                    it.lastNameMaternal == null && it.birthDate == null &&
-                    it.curp == null && it.phone == null && it.email == null &&
-                    it.addressStreet == null && it.addressZip == null
-        }
+        return errors.isValid
     }
 
     fun setGeneralError(error: String?) {
