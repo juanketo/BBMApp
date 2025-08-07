@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import org.example.appbbmges.ui.usuarios.AppColors
 
@@ -28,7 +29,8 @@ fun CustomOutlinedTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     readOnly: Boolean = false,
     trailingIcon: @Composable (() -> Unit)? = null,
-    maxLength: Int? = null
+    maxLength: Int? = null,
+    onClick: (() -> Unit)? = null
 ) {
     OutlinedTextField(
         value = value,
@@ -38,7 +40,11 @@ fun CustomOutlinedTextField(
         },
         label = { Text(label) },
         placeholder = { Text(placeholder) },
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxWidth()
+            .let { m ->
+                if (onClick != null) m.clickable { onClick() } else m
+            },
         singleLine = true,
         readOnly = readOnly,
         isError = isError,
@@ -56,6 +62,68 @@ fun CustomOutlinedTextField(
             errorBorderColor = MaterialTheme.colorScheme.error
         )
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerField(
+    value: String,
+    onDateSelected: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    isError: Boolean = false,
+    errorMessage: String? = null
+) {
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { showDatePicker = true }
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { },
+            label = { Text(label) },
+            placeholder = { Text("dd/MM/yyyy") },
+            modifier = Modifier.fillMaxWidth(),
+            readOnly = true,
+            enabled = false,
+            isError = isError,
+            supportingText = {
+                if (errorMessage != null) {
+                    Text(errorMessage, style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = "Seleccionar fecha",
+                    tint = if (isError) MaterialTheme.colorScheme.error else AppColors.Primary,
+                    modifier = Modifier.padding(12.dp)
+                )
+            },
+            shape = RoundedCornerShape(8.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledTextColor = Color.Black.copy(alpha = 0.87f),
+                disabledBorderColor = if (isError) MaterialTheme.colorScheme.error
+                else Color.Gray.copy(alpha = 0.5f),
+                disabledLabelColor = if (isError) MaterialTheme.colorScheme.error
+                else Color.Black.copy(alpha = 0.87f),
+                disabledPlaceholderColor = Color.Black.copy(alpha = 0.6f)
+            )
+        )
+    }
+
+    if (showDatePicker) {
+        DatePickerModal(
+            onDateSelected = { millis ->
+                millis?.let { onDateSelected(DateUtils.formatDateFromMillis(it)) }
+                showDatePicker = false
+            },
+            onDismiss = { showDatePicker = false }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -149,43 +217,6 @@ fun CustomCountryCodeDropdown(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DatePickerField(
-    value: String,
-    onDateSelected: (String) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-    isError: Boolean = false,
-    errorMessage: String? = null
-) {
-    var showDatePicker by remember { mutableStateOf(false) }
-    CustomOutlinedTextField(
-        value = value,
-        onValueChange = { },
-        label = label,
-        placeholder = "dd/MM/yyyy",
-        modifier = modifier.clickable { showDatePicker = true },
-        readOnly = true,
-        isError = isError,
-        errorMessage = errorMessage,
-        trailingIcon = {
-            IconButton(onClick = { showDatePicker = true }) {
-                Icon(Icons.Default.CalendarToday, contentDescription = "Seleccionar fecha")
-            }
-        }
-    )
-    if (showDatePicker) {
-        DatePickerModal(
-            onDateSelected = { millis ->
-                millis?.let { onDateSelected(DateUtils.formatDateFromMillis(it)) }
-                showDatePicker = false
-            },
-            onDismiss = { showDatePicker = false }
-        )
-    }
-}
-
 @Composable
 fun FormProgressIndicator(
     currentStep: StudentFormStep,
@@ -201,7 +232,9 @@ fun FormProgressIndicator(
                     StudentFormStep.CONFIRMATION -> 1.0f
                 }
             },
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
             color = AppColors.Primary
         )
         Text(

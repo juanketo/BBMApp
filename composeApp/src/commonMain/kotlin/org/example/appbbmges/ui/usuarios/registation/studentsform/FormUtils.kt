@@ -1,7 +1,9 @@
 package org.example.appbbmges.ui.usuarios.registation.studentsform
 
 import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 
 object DateUtils {
@@ -29,9 +31,14 @@ object DateUtils {
     }
 
     fun formatDateFromMillis(millis: Long): String {
-        val instant = kotlinx.datetime.Instant.fromEpochMilliseconds(millis)
-        val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
-        return "${date.dayOfMonth.toString().padStart(2, '0')}/${date.monthNumber.toString().padStart(2, '0')}/${date.year}"
+        // Convertir milisegundos a días desde epoch
+        val daysSinceEpoch = millis / (24 * 60 * 60 * 1000)
+
+        // Crear LocalDate directamente desde días, evitando problemas de zona horaria
+        val epochDate = LocalDate(1970, 1, 1)
+        val selectedDate = epochDate.plus(kotlinx.datetime.DatePeriod(days = daysSinceEpoch.toInt()))
+
+        return "${selectedDate.dayOfMonth.toString().padStart(2, '0')}/${selectedDate.monthNumber.toString().padStart(2, '0')}/${selectedDate.year}"
     }
 }
 
