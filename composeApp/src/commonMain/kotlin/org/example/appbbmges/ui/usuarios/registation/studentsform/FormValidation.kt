@@ -1,4 +1,5 @@
 package org.example.appbbmges.ui.usuarios.registation.studentsform
+
 object FormValidation {
     fun validatePersonalInfo(data: StudentFormData): FormErrors {
         return FormErrors(
@@ -64,8 +65,11 @@ object FormValidation {
 
     private fun validateAddressStreet(address: String): String? {
         if (address.isEmpty()) return null
-        return if (address.length !in 5..100) "La calle debe tener entre 5 y 100 caracteres."
-        else null
+        return when {
+            address.length !in 5..100 -> "La calle debe tener entre 5 y 100 caracteres."
+            !address.matches("^[A-Za-z0-9À-ÿ\\s.,#-]+$".toRegex()) -> "La calle contiene caracteres no válidos. Solo se permiten letras, números, espacios y los símbolos: ., #-."
+            else -> null
+        }
     }
 
     private fun validateAddressZip(zip: String): String? {

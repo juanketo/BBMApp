@@ -162,6 +162,15 @@ fun PersonalInfoStep(
                 }
             }
         )
+        // Nueva sección: nota de advertencia para el CURP generado automáticamente
+        if (data.curp.isNotEmpty() && !curpEdited) {
+            Text(
+                text = "⚠️ El CURP se ha generado automáticamente. Por favor, corrobore la información antes de continuar.",
+                color = Color.DarkGray, // Un color que no sea de error para no confundir al usuario
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp)
+            )
+        }
     }
 }
 
