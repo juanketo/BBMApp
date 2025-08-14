@@ -886,7 +886,62 @@ DELETE FROM TeacherReportEntity WHERE id = ?;
 teacherReportCount:
 SELECT COUNT(*) FROM TeacherReportEntity;
 
--- Count active franchises (is_new = 0 AND active = 1)
+-- PrecioBaseEntity
+CREATE TABLE PrecioBaseEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    franchise_id INTEGER NOT NULL,
+    nombre TEXT NOT NULL,
+    precio_costo REAL NOT NULL,
+    descripcion TEXT,
+    activo INTEGER NOT NULL DEFAULT 1,
+    fecha_creacion TEXT NOT NULL,
+    fecha_actualizacion TEXT,
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id)
+);
+
+precioBaseCreate:
+INSERT INTO PrecioBaseEntity (franchise_id, nombre, precio_costo, descripcion, activo, fecha_creacion, fecha_actualizacion)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+precioBaseSelectAll:
+SELECT pb.id, pb.franchise_id, pb.nombre, pb.precio_costo, pb.descripcion, pb.activo, pb.fecha_creacion, pb.fecha_actualizacion, f.name AS franchise_name
+FROM PrecioBaseEntity pb
+JOIN FranchiseEntity f ON pb.franchise_id = f.id;
+
+precioBaseSelectById:
+SELECT pb.id, pb.franchise_id, pb.nombre, pb.precio_costo, pb.descripcion, pb.activo, pb.fecha_creacion, pb.fecha_actualizacion, f.name AS franchise_name
+FROM PrecioBaseEntity pb
+JOIN FranchiseEntity f ON pb.franchise_id = f.id
+WHERE pb.id = ?;
+
+precioBaseSelectByFranchiseId:
+SELECT pb.id, pb.franchise_id, pb.nombre, pb.precio_costo, pb.descripcion, pb.activo, pb.fecha_creacion, pb.fecha_actualizacion, f.name AS franchise_name
+FROM PrecioBaseEntity pb
+JOIN FranchiseEntity f ON pb.franchise_id = f.id
+WHERE pb.franchise_id = ?;
+
+precioBaseUpdate:
+UPDATE PrecioBaseEntity
+SET franchise_id = ?, nombre = ?, precio_costo = ?, descripcion = ?, activo = ?, fecha_actualizacion = ?
+WHERE id = ?;
+
+precioBaseDelete:
+DELETE FROM PrecioBaseEntity WHERE id = ?;
+
+precioBaseCount:
+SELECT COUNT(*) FROM PrecioBaseEntity;
+
+precioBaseSelectActive:
+SELECT pb.id, pb.franchise_id, pb.nombre, pb.precio_costo, pb.descripcion, pb.activo, pb.fecha_creacion, pb.fecha_actualizacion, f.name AS franchise_name
+FROM PrecioBaseEntity pb
+JOIN FranchiseEntity f ON pb.franchise_id = f.id
+WHERE pb.activo = 1;
+
+precioBaseSelectActiveByFranchiseId:
+SELECT pb.id, pb.franchise_id, pb.nombre, pb.precio_costo, pb.descripcion, pb.activo, pb.fecha_creacion, pb.fecha_actualizacion, f.name AS franchise_name
+FROM PrecioBaseEntity pb
+JOIN FranchiseEntity f ON pb.franchise_id = f.id
+WHERE pb.franchise_id = ? AND pb.activo = 1;
+
 activeBranchesCount:
-SELECT COUNT(*) FROM FranchiseEntity
-WHERE is_new = 0 AND active = 1;
+SELECT COUNT(*) FROM FranchiseEntity WHERE active = 1;

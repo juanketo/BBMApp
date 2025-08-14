@@ -27,6 +27,12 @@ import org.example.appbbmges.TrialClassEntity
 import org.example.appbbmges.UserEntity
 import org.example.appbbmges.FranchiseeEntity
 import org.example.appbbmges.LevelEntity
+import org.example.appbbmges.PrecioBaseSelectAll
+import org.example.appbbmges.PrecioBaseSelectById
+import org.example.appbbmges.PrecioBaseSelectByFranchiseId
+import org.example.appbbmges.PrecioBaseSelectActive
+import org.example.appbbmges.PrecioBaseSelectActiveByFranchiseId
+
 
 class Repository(private val database: AppDatabaseBaby) {
 
@@ -865,6 +871,63 @@ class Repository(private val database: AppDatabaseBaby) {
         val maleCount = students.count { it.gender.equals("masculino", ignoreCase = true) }.toLong()
         val femaleCount = students.count { it.gender.equals("femenino", ignoreCase = true) }.toLong()
         return Pair(maleCount, femaleCount)
+    }
+
+    // --- PrecioBaseEntity ---
+    fun insertPrecioBase(
+        franchiseId: Long,
+        nombre: String,
+        precioCosto: Double,
+        descripcion: String?,
+        activo: Long = 1,
+        fechaCreacion: String,
+        fechaActualizacion: String? = null
+    ) {
+        database.expensesDbQueries.precioBaseCreate(
+            franchiseId, nombre, precioCosto, descripcion, activo, fechaCreacion, fechaActualizacion
+        )
+    }
+
+    fun getAllPreciosBase(): List<PrecioBaseSelectAll> {
+        return database.expensesDbQueries.precioBaseSelectAll().executeAsList()
+    }
+
+    fun getPrecioBaseById(id: Long): PrecioBaseSelectById? {
+        return database.expensesDbQueries.precioBaseSelectById(id).executeAsOneOrNull()
+    }
+
+    fun getPreciosBaseByFranchiseId(franchiseId: Long): List<PrecioBaseSelectByFranchiseId> {
+        return database.expensesDbQueries.precioBaseSelectByFranchiseId(franchiseId).executeAsList()
+    }
+
+    fun updatePrecioBase(
+        id: Long,
+        franchiseId: Long,
+        nombre: String,
+        precioCosto: Double,
+        descripcion: String?,
+        activo: Long,
+        fechaActualizacion: String
+    ) {
+        database.expensesDbQueries.precioBaseUpdate(
+            franchiseId, nombre, precioCosto, descripcion, activo, fechaActualizacion, id
+        )
+    }
+
+    fun deletePrecioBase(id: Long) {
+        database.expensesDbQueries.precioBaseDelete(id)
+    }
+
+    fun getPrecioBaseCount(): Long {
+        return database.expensesDbQueries.precioBaseCount().executeAsOne()
+    }
+
+    fun getActivePreciosBase(): List<PrecioBaseSelectActive> {
+        return database.expensesDbQueries.precioBaseSelectActive().executeAsList()
+    }
+
+    fun getActivePreciosBaseByFranchiseId(franchiseId: Long): List<PrecioBaseSelectActiveByFranchiseId> {
+        return database.expensesDbQueries.precioBaseSelectActiveByFranchiseId(franchiseId).executeAsList()
     }
 
     fun initializeData() {
