@@ -13,12 +13,15 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
@@ -27,87 +30,21 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import appbbmges.composeapp.generated.resources.Res
-import appbbmges.composeapp.generated.resources.logoSystem
+import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import org.example.appbbmges.PrecioBaseSelectAll
 import org.example.appbbmges.data.Repository
 import org.example.appbbmges.ui.usuarios.AppColors
-import org.example.appbbmges.FranchiseEntity
+import appbbmges.composeapp.generated.resources.Res
+import appbbmges.composeapp.generated.resources.logoSystem
 import org.jetbrains.compose.resources.painterResource
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Payments
-import androidx.example.appbbmges.BasePriceWithFranchise
 
-// --- Modelos de datos y utilidades ---
-
-enum class BasePriceFormStep {
-    FORM,
-    CONFIRMATION
-}
-
-sealed class BasePriceFormState {
-    object Idle : BasePriceFormState()
-    object Loading : BasePriceFormState()
-    data class Error(val message: String) : BasePriceFormState()
-    object Success : BasePriceFormState()
-}
-
-data class BasePriceValidationResult(
-    val isValid: Boolean,
-    val nameError: String? = null,
-    val priceError: String? = null,
-    val franchiseError: String? = null,
-    val duplicateError: String? = null
-)
-
-class BasePriceValidator {
-    companion object {
-        fun validate(
-            name: String,
-            price: String,
-            selectedFranchiseId: Long?,
-            existingPrices: List<BasePriceWithFranchise>,
-            excludeId: Long? = null
-        ): BasePriceValidationResult {
-            val priceDouble = price.toDoubleOrNull()
-            val nameError = when {
-                name.isEmpty() -> "El nombre es obligatorio"
-                name.length < 3 -> "Mínimo 3 caracteres"
-                name.length > 50 -> "Máximo 50 caracteres"
-                else -> null
-            }
-
-            val priceError = when {
-                price.isEmpty() -> "El precio es obligatorio"
-                priceDouble == null || priceDouble <= 0 -> "Debe ser un número mayor que 0"
-                else -> null
-            }
-
-            val franchiseError = if (selectedFranchiseId == null) "Debes seleccionar una sucursal" else null
-
-            val duplicateError = if (existingPrices.any {
-                    it.name.equals(name, ignoreCase = true) && it.franchiseId == selectedFranchiseId && it.id != excludeId
-                }) {
-                "Ya existe un precio base con este nombre en la sucursal seleccionada"
-            } else null
-
-            return BasePriceValidationResult(
-                isValid = nameError == null && priceError == null && franchiseError == null && duplicateError == null,
-                nameError = nameError,
-                priceError = priceError,
-                franchiseError = franchiseError,
-                duplicateError = duplicateError
-            )
-        }
-    }
-}
-
-// --- Composable Principal ---
-
+// -----------------------------------------------
+// Pantalla principal: Lista de Cuotas (PrecioBase)
+// -----------------------------------------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCuotasScreen(
@@ -115,28 +52,37 @@ fun AddCuotasScreen(
     repository: Repository,
     modifier: Modifier = Modifier
 ) {
-    var showForm by remember { mutableStateOf(false) }
-    var editingPrice by remember { mutableStateOf<BasePriceWithFranchise?>(null) }
-    var showDeleteDialog by remember { mutableStateOf<BasePriceWithFranchise?>(null) }
-    var existingPrices by remember { mutableStateOf<List<BasePriceWithFranchise>>(emptyList()) }
-    var existingFranchises by remember { mutableStateOf<List<FranchiseEntity>>(emptyList()) }
+    val coroutineScope = rememberCoroutineScope()
+    var cuotas by remember { mutableStateOf<List<PrecioBaseSelectAll>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    val snackbarHostState = remember { SnackbarHostState() }
+    var showForm by remember { mutableStateOf(false) }
+    var editingCuota by remember { mutableStateOf<PrecioBaseSelectAll?>(null) }
+    var showDeleteDialog by remember { mutableStateOf<PrecioBaseSelectAll?>(null) }
 
-    fun reloadPricesAndFranchises() {
-        isLoading = true
+    // Cargar cuotas al inicio
+    LaunchedEffect(Unit) {
         try {
-            existingPrices = repository.getAllBasePricesWithFranchise()
-            existingFranchises = repository.getAllFranchises()
+            cuotas = repository.getAllPreciosBase()
         } catch (e: Exception) {
-            println("Error recargando precios y sucursales: ${e.message}")
+            // Log simple — considera mostrar Snackbar/Toast en producción
+            println("Error cargando precios base: ${e.message}")
+            cuotas = emptyList()
         } finally {
             isLoading = false
         }
     }
 
-    LaunchedEffect(Unit) {
-        reloadPricesAndFranchises()
+    // Recargar
+    fun reloadCuotas() {
+        isLoading = true
+        try {
+            cuotas = repository.getAllPreciosBase()
+        } catch (e: Exception) {
+            println("Error recargando precios base: ${e.message}")
+            cuotas = emptyList()
+        } finally {
+            isLoading = false
+        }
     }
 
     Box(
@@ -144,41 +90,211 @@ fun AddCuotasScreen(
             .fillMaxSize()
             .background(AppColors.Background)
     ) {
-        // Formulario para agregar/editar
-        if (showForm || editingPrice != null) {
-            BasePriceFormDialog(
-                onDismiss = {
-                    showForm = false
-                    editingPrice = null
-                    reloadPricesAndFranchises()
-                },
-                repository = repository,
-                existingPrices = existingPrices,
-                editingPrice = editingPrice,
-                existingFranchises = existingFranchises,
-                snackbarHostState = snackbarHostState
-            )
+        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Cuotas / Precios base",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.TextColor
+                    )
+                    Text(
+                        text = "${cuotas.size} registros",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AppColors.TextColor.copy(alpha = 0.7f)
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { onDismiss() },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFff8abe)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Volver", color = Color.White)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Contenido: loading / vacío / lista
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = AppColors.Primary)
+                }
+            } else if (cuotas.isEmpty()) {
+                // Estado vacío (mensaje agradable y guía)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(2.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(48.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Add,
+                            contentDescription = "Sin cuotas",
+                            modifier = Modifier.size(64.dp),
+                            tint = AppColors.Primary.copy(alpha = 0.6f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Aún no hay cuotas registradas",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = AppColors.TextColor
+                        )
+                        Text(
+                            text = "Presiona + para agregar la primera cuota",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AppColors.TextColor.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            } else {
+                // Lista en forma de "tabla" simple
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(2.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                        // Header fila
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(AppColors.Primary.copy(alpha = 0.08f))
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Nombre",
+                                    fontWeight = FontWeight.Bold,
+                                    color = AppColors.Primary,
+                                    modifier = Modifier.weight(3f)
+                                )
+                                Text(
+                                    text = "Precio",
+                                    fontWeight = FontWeight.Bold,
+                                    color = AppColors.Primary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "Acciones",
+                                    fontWeight = FontWeight.Bold,
+                                    color = AppColors.Primary,
+                                    modifier = Modifier.weight(1f),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+
+                        items(cuotas) { cuota ->
+                            // --- Ajusta las propiedades según cómo SQLDelight haya generado la fila ---
+                            // Probables propiedades generadas por SQLDelight:
+                            // cuota.id, cuota.nombre, cuota.precio_costo, cuota.descripcion, cuota.activo, cuota.fecha_creacion
+                            // Si tus propiedades difieren, cámbialas aquí (ej: cuota.precioCosto).
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = cuota.nombre,
+                                    modifier = Modifier.weight(3f),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = AppColors.TextColor
+                                )
+
+                                // precio: si tu property es `precio_costo` o `precioCosto`, ajusta aquí
+                                Text(
+                                    text = "${cuota.precio_costo}", // <-- si falla, cambia a cuota.precioCosto
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    IconButton(onClick = {
+                                        editingCuota = cuota
+                                        showForm = true
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Edit,
+                                            contentDescription = "Editar",
+                                            tint = AppColors.Primary
+                                        )
+                                    }
+                                    IconButton(onClick = { showDeleteDialog = cuota }) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Delete,
+                                            contentDescription = "Eliminar",
+                                            tint = Color(0xFFE57373)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Divider entre filas (opcional)
+                            if (cuota != cuotas.last()) {
+                                Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // FloatingActionButton para agregar
+        FloatingActionButton(
+            onClick = {
+                editingCuota = null
+                showForm = true
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(24.dp),
+            containerColor = AppColors.Primary,
+            contentColor = Color.White
+        ) {
+            Icon(imageVector = Icons.Outlined.Add, contentDescription = "Agregar cuota")
         }
 
         // Diálogo de confirmación para eliminar
-        showDeleteDialog?.let { price ->
+        showDeleteDialog?.let { cuotaToDelete ->
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = null },
-                title = { Text("Eliminar Precio Base") },
-                text = { Text("¿Estás seguro de que deseas eliminar el precio base '${price.name}' de la sucursal '${price.franchiseName}'?") },
+                title = { Text("Eliminar cuota") },
+                text = { Text("¿Seguro que deseas eliminar '${cuotaToDelete.nombre}'?") },
                 confirmButton = {
-                    TextButton(
-                        onClick = {
-                            try {
-                                repository.deleteBasePrice(price.id)
-                                reloadPricesAndFranchises()
-                                showDeleteDialog = null
-                            } catch (e: Exception) {
-                                println("Error al eliminar precio base: ${e.message}")
-                                showDeleteDialog = null
-                            }
+                    TextButton(onClick = {
+                        try {
+                            repository.deletePrecioBase(cuotaToDelete.id)
+                            reloadCuotas()
+                        } catch (e: Exception) {
+                            println("Error al eliminar cuota: ${e.message}")
+                        } finally {
+                            showDeleteDialog = null
                         }
-                    ) {
+                    }) {
                         Text("Eliminar", color = Color.Red)
                     }
                 },
@@ -190,381 +306,325 @@ fun AddCuotasScreen(
             )
         }
 
-        // Vista principal de la lista de precios
-        if (!showForm && editingPrice == null && showDeleteDialog == null) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp)
-            ) {
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Precios Base de Sucursales",
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppColors.TextColor
-                        )
-                        Text(
-                            text = "${existingPrices.size} precios registrados",
-                            fontSize = 14.sp,
-                            color = AppColors.TextColor.copy(alpha = 0.7f)
-                        )
-                    }
-
-                    Button(
-                        onClick = onDismiss,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFff8abe)
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = "Volver",
-                            color = Color.White,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Contenido principal (Tabla de precios o mensaje de vacío)
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = AppColors.Primary)
-                    }
-                } else if (existingPrices.isEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(2.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(48.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Payments,
-                                contentDescription = "Sin precios",
-                                modifier = Modifier.size(64.dp),
-                                tint = AppColors.Primary.copy(alpha = 0.6f)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No hay cuotas disponibles de las unidades",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = AppColors.TextColor,
-                                textAlign = TextAlign.Center
-                            )
-                            Text(
-                                text = "Añade una nueva",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = AppColors.TextColor.copy(alpha = 0.7f),
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
-                    }
-                } else {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(2.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            item {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(AppColors.Primary.copy(alpha = 0.1f))
-                                        .padding(16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "Nombre Sucursal",
-                                        fontWeight = FontWeight.Bold,
-                                        color = AppColors.Primary,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Text(
-                                        text = "Precio Base",
-                                        fontWeight = FontWeight.Bold,
-                                        color = AppColors.Primary,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Text(
-                                        text = "Acciones",
-                                        fontWeight = FontWeight.Bold,
-                                        color = AppColors.Primary,
-                                        modifier = Modifier.weight(1f),
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                            }
-
-                            items(existingPrices) { price ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = price.franchiseName,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = AppColors.TextColor,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Text(
-                                        text = "$ ${"%.2f".format(price.price)}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = AppColors.TextColor,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Row(
-                                        modifier = Modifier.weight(1f),
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        IconButton(
-                                            onClick = { editingPrice = price },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Outlined.Edit,
-                                                contentDescription = "Editar",
-                                                tint = AppColors.Primary,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
-                                        IconButton(
-                                            onClick = { showDeleteDialog = price },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Outlined.Delete,
-                                                contentDescription = "Eliminar",
-                                                tint = Color(0xFFE57373),
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                                if (price != existingPrices.last()) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                        thickness = 1.dp,
-                                        color = Color(0xFFF0F0F0)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Botón flotante para agregar
-            FloatingActionButton(
-                onClick = {
-                    if (existingFranchises.isEmpty()) {
-                        // Muestra un mensaje si no hay sucursales para asociar
-                        // En un futuro, podrías usar un Snackbar para mostrar esto
-                        println("No hay sucursales para asociar un precio base. Por favor, crea una sucursal primero.")
-                    } else {
-                        showForm = true
-                    }
+        // Formulario / diálogo para crear / editar (reutiliza el mismo componente)
+        if (showForm) {
+            CuotaFormDialog(
+                onDismiss = {
+                    showForm = false
+                    editingCuota = null
+                    reloadCuotas()
                 },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(24.dp),
-                containerColor = AppColors.Primary,
-                contentColor = Color.White
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Add,
-                    contentDescription = "Agregar precio base"
-                )
-            }
+                repository = repository,
+                existingCuotas = cuotas,
+                editingCuota = editingCuota
+            )
         }
+    }
+}
+
+// -----------------------------------------------
+// Dialog/Formulario para Crear/Editar Cuota
+// -----------------------------------------------
+enum class CuotaFormStep { FORM, CONFIRMATION }
+
+sealed class CuotaFormState {
+    object Idle : CuotaFormState()
+    object Loading : CuotaFormState()
+    object Success : CuotaFormState()
+    data class Error(val message: String) : CuotaFormState()
+}
+
+data class CuotaValidationResult(
+    val isValid: Boolean,
+    val nameError: String? = null,
+    val priceError: String? = null,
+    val duplicateError: String? = null
+)
+
+object CuotaValidator {
+    fun validate(
+        name: String,
+        priceString: String,
+        existing: List<PrecioBaseSelectAll>,
+        excludeId: Long? = null
+    ): CuotaValidationResult {
+        val nameErr = when {
+            name.isBlank() -> "El nombre es obligatorio"
+            name.length < 3 -> "Mínimo 3 caracteres"
+            name.length > 80 -> "Máximo 80 caracteres"
+            !name.matches(Regex("^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\\s]+$")) -> "Solo letras, números y espacios"
+            else -> null
+        }
+
+        val priceVal = priceString.toDoubleOrNull()
+        val priceErr = when {
+            priceString.isBlank() -> "El precio es obligatorio"
+            priceVal == null -> "Formato de precio inválido"
+            priceVal <= 0.0 -> "El precio debe ser mayor a 0"
+            else -> null
+        }
+
+        val dup = if (nameErr == null && priceErr == null) {
+            val exists = existing.any {
+                it.nombre.equals(name, ignoreCase = true) && it.id != (excludeId ?: -1L)
+            }
+            if (exists) "Ya existe una cuota con este nombre" else null
+        } else null
+
+        return CuotaValidationResult(
+            isValid = nameErr == null && priceErr == null && dup == null,
+            nameError = nameErr,
+            priceError = priceErr,
+            duplicateError = dup
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BasePriceFormDialog(
+private fun CuotaFormDialog(
     onDismiss: () -> Unit,
     repository: Repository,
-    existingPrices: List<BasePriceWithFranchise>,
-    editingPrice: BasePriceWithFranchise? = null,
-    existingFranchises: List<FranchiseEntity>,
-    snackbarHostState: SnackbarHostState
+    existingCuotas: List<PrecioBaseSelectAll>,
+    editingCuota: PrecioBaseSelectAll? = null
 ) {
     val focusManager = LocalFocusManager.current
-    val isEditing = editingPrice != null
+    val coroutineScope = rememberCoroutineScope()
+    val isEditing = editingCuota != null
+    val currentFranchiseId = 1L // REEMPLAZA según tu lógica si corresponde
 
-    // Estados del formulario
-    var currentStep by remember { mutableStateOf(BasePriceFormStep.FORM) }
-    var name by remember { mutableStateOf(editingPrice?.name ?: "") }
-    var priceText by remember { mutableStateOf(editingPrice?.price?.toString() ?: "") }
-    var description by remember { mutableStateOf(editingPrice?.description ?: "") }
-    var formState by remember { mutableStateOf<BasePriceFormState>(BasePriceFormState.Idle) }
-    var validationResult by remember { mutableStateOf(BasePriceValidationResult(true)) }
-
-    // Estados para el selector de franquicias
-    var expanded by remember { mutableStateOf(false) }
-    var selectedFranchiseId by remember { mutableStateOf(editingPrice?.franchiseId) }
-    val selectedFranchiseName = existingFranchises.find { it.id == selectedFranchiseId }?.name ?: "Selecciona una sucursal"
-
-
-    // Función de validación
-    fun validateForm(): Boolean {
-        val validation = BasePriceValidator.validate(
-            name = name,
-            price = priceText,
-            selectedFranchiseId = selectedFranchiseId,
-            existingPrices = existingPrices,
-            excludeId = editingPrice?.id
+    // Campos del formulario
+    var currentStep by remember { mutableStateOf(CuotaFormStep.FORM) }
+    var nombre by remember { mutableStateOf(editingCuota?.nombre ?: "") }
+    // Ajuste: SQLDelight suele generar `precio_costo` (underscore) — si tu propiedad es distinta, cámbiala.
+    var precio by remember {
+        mutableStateOf(
+            editingCuota?.let { it.precio_costo.toString() } ?: "" // <-- si falla, usa it.precioCosto
         )
-        validationResult = validation
-        return validation.isValid
+    }
+    var descripcion by remember { mutableStateOf(editingCuota?.descripcion ?: "") }
+    var formState by remember { mutableStateOf<CuotaFormState>(CuotaFormState.Idle) }
+    var validationResult by remember { mutableStateOf(CuotaValidationResult(true)) }
+
+    fun validate(): Boolean {
+        val r = CuotaValidator.validate(nombre.trim(), precio.trim(), existingCuotas, editingCuota?.id)
+        validationResult = r
+        return r.isValid
     }
 
-    // Función para proceder al siguiente paso o guardar
+    fun getCurrentDate(): String {
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        return "${now.year}-${now.monthNumber.toString().padStart(2, '0')}-${now.dayOfMonth.toString().padStart(2, '0')}"
+    }
+
     fun proceedToNext() {
         when (currentStep) {
-            BasePriceFormStep.FORM -> {
-                if (validateForm()) {
-                    currentStep = BasePriceFormStep.CONFIRMATION
-                }
+            CuotaFormStep.FORM -> {
+                if (validate()) currentStep = CuotaFormStep.CONFIRMATION
             }
-            BasePriceFormStep.CONFIRMATION -> {
-                formState = BasePriceFormState.Loading
-                try {
-                    val franchiseIdToUse = selectedFranchiseId!! // Asumimos que la validación ya lo verificó
-                    if (isEditing) {
-                        repository.updateBasePrice(
-                            id = editingPrice!!.id,
-                            name = name,
-                            price = priceText.toDouble(),
-                            description = description.ifEmpty { null }
-                        )
-                    } else {
-                        repository.insertBasePrice(
-                            franchiseId = franchiseIdToUse,
-                            name = name,
-                            price = priceText.toDouble(),
-                            description = description.ifEmpty { null }
-                        )
+            CuotaFormStep.CONFIRMATION -> {
+                formState = CuotaFormState.Loading
+                coroutineScope.launch {
+                    try {
+                        if (isEditing) {
+                            val id = editingCuota!!.id
+                            val activo = editingCuota.activo // si tu property se llama distinto, ajústalo
+                            repository.updatePrecioBase(
+                                id = id,
+                                franchiseId = currentFranchiseId,
+                                nombre = nombre.trim(),
+                                precioCosto = precio.toDouble(),
+                                descripcion = if (descripcion.isBlank()) null else descripcion.trim(),
+                                activo = activo,
+                                fechaActualizacion = getCurrentDate()
+                            )
+                        } else {
+                            repository.insertPrecioBase(
+                                franchiseId = currentFranchiseId,
+                                nombre = nombre.trim(),
+                                precioCosto = precio.toDouble(),
+                                descripcion = if (descripcion.isBlank()) null else descripcion.trim(),
+                                activo = 1,
+                                fechaCreacion = getCurrentDate()
+                            )
+                        }
+                        formState = CuotaFormState.Success
+                        onDismiss()
+                    } catch (e: Exception) {
+                        formState = CuotaFormState.Error("Error al ${if (isEditing) "actualizar" else "registrar"}: ${e.message}")
+                        println("Repo error: ${e.message}")
                     }
-                    formState = BasePriceFormState.Success
-                    onDismiss()
-                } catch (e: Exception) {
-                    formState = BasePriceFormState.Error("Error al ${if (isEditing) "actualizar" else "registrar"} el precio: ${e.message}")
-                    println("Error al ${if (isEditing) "actualizar" else "registrar"} el precio: ${e.message}")
                 }
             }
         }
     }
 
+    // Dialog tipo modal centrado (Card)
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Transparent)
+            .background(AppColors.Background),
+        contentAlignment = Alignment.Center
     ) {
         Card(
             modifier = Modifier
-                .widthIn(min = 400.dp, max = 500.dp)
-                .heightIn(max = 700.dp)
-                .padding(horizontal = 24.dp, vertical = 16.dp)
-                .align(Alignment.Center),
+                .widthIn(min = 360.dp, max = 560.dp)
+                .heightIn(max = 760.dp)
+                .padding(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(4.dp),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(6.dp)
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize()
-            ) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 BackgroundLogo()
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(24.dp)
+                        .padding(20.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    FormHeader(currentStep, isEditing)
+                    // Header con progreso
+                    val progress by animateFloatAsState(
+                        targetValue = when (currentStep) {
+                            CuotaFormStep.FORM -> 0.5f
+                            CuotaFormStep.CONFIRMATION -> 1f
+                        },
+                        animationSpec = tween(300),
+                        label = "progress"
+                    )
+
+                    Text(
+                        text = if (isEditing) "Editar Cuota" else "Registrar Cuota",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth(), color = AppColors.Primary)
+
+                    Text(
+                        text = when (currentStep) {
+                            CuotaFormStep.FORM -> "Paso 1: Información"
+                            CuotaFormStep.CONFIRMATION -> "Paso 2: Confirmación"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
                     Spacer(modifier = Modifier.height(12.dp))
 
                     when (currentStep) {
-                        BasePriceFormStep.FORM -> {
-                            BasePriceFormContent(
-                                name = name,
-                                priceText = priceText,
-                                description = description,
-                                validationResult = validationResult,
-                                formState = formState,
-                                existingFranchises = existingFranchises,
-                                selectedFranchiseId = selectedFranchiseId,
-                                onNameChange = {
-                                    name = it
-                                    validationResult = validationResult.copy(nameError = null, duplicateError = null)
+                        CuotaFormStep.FORM -> {
+                            // Nombre
+                            OutlinedTextField(
+                                value = nombre,
+                                onValueChange = {
+                                    nombre = it
+                                    if (validationResult.nameError != null || validationResult.duplicateError != null) {
+                                        validationResult = validationResult.copy(nameError = null, duplicateError = null)
+                                    }
                                 },
-                                onPriceChange = {
-                                    priceText = it
-                                    validationResult = validationResult.copy(priceError = null)
+                                label = { Text("Nombre *") },
+                                singleLine = true,
+                                isError = validationResult.nameError != null || validationResult.duplicateError != null,
+                                supportingText = {
+                                    (validationResult.nameError ?: validationResult.duplicateError)?.let {
+                                        Text(it, color = MaterialTheme.colorScheme.error)
+                                    }
                                 },
-                                onDescriptionChange = { description = it },
-                                onFranchiseSelected = { id ->
-                                    selectedFranchiseId = id
-                                    validationResult = validationResult.copy(franchiseError = null, duplicateError = null)
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+                                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
+                            )
+
+                            Spacer(Modifier.height(12.dp))
+
+                            // Precio
+                            OutlinedTextField(
+                                value = precio,
+                                onValueChange = { newValue ->
+                                    if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                        precio = newValue
+                                        if (validationResult.priceError != null) {
+                                            validationResult = validationResult.copy(priceError = null)
+                                        }
+                                    }
                                 },
-                                focusManager = focusManager
+                                label = { Text("Precio *") },
+                                prefix = { Text("$", color = AppColors.Primary) },
+                                singleLine = true,
+                                isError = validationResult.priceError != null,
+                                supportingText = {
+                                    validationResult.priceError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
+                            )
+
+                            Spacer(Modifier.height(12.dp))
+
+                            // Descripción
+                            OutlinedTextField(
+                                value = descripcion,
+                                onValueChange = { descripcion = it },
+                                label = { Text("Descripción (opcional)") },
+                                minLines = 2,
+                                maxLines = 4,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                             )
                         }
-                        BasePriceFormStep.CONFIRMATION -> {
-                            BasePriceConfirmationContent(
-                                name = name,
-                                price = priceText,
-                                description = description,
-                                franchiseName = selectedFranchiseName,
-                                formState = formState,
-                                isEditing = isEditing
-                            )
+
+                        CuotaFormStep.CONFIRMATION -> {
+                            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))) {
+                                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(text = "Confirmar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Divider()
+                                    Text("Nombre: $nombre", fontWeight = FontWeight.Medium)
+                                    Text("Precio: $$precio", fontWeight = FontWeight.Medium)
+                                    if (descripcion.isNotBlank()) Text("Descripción: $descripcion")
+                                }
+                            }
+
+                            if (formState is CuotaFormState.Error) {
+                                Spacer(Modifier.height(12.dp))
+                                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                                    Text((formState as CuotaFormState.Error).message, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(12.dp))
+                                }
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    NavigationButtons(
-                        currentStep = currentStep,
-                        formState = formState,
-                        onDismiss = onDismiss,
-                        onPrevious = { currentStep = BasePriceFormStep.FORM },
-                        onNext = { proceedToNext() },
-                        isEditing = isEditing
-                    )
+                    // Botones de navegación
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onDismiss() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFff8abe))) {
+                            Text("Cancelar")
+                        }
+
+                        if (currentStep == CuotaFormStep.CONFIRMATION) {
+                            Button(onClick = { currentStep = CuotaFormStep.FORM }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFff8abe))) {
+                                Text("Atrás")
+                            }
+                        }
+
+                        Button(onClick = { proceedToNext() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = AppColors.Primary)) {
+                            if (formState is CuotaFormState.Loading) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                            } else {
+                                Text(if (currentStep == CuotaFormStep.FORM) "Siguiente" else if (isEditing) "Actualizar" else "Registrar")
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+// -----------------------------------------------
+// Logo de fondo (reutilizable)
+// -----------------------------------------------
 @Composable
 private fun BackgroundLogo() {
     Box(
@@ -577,339 +637,9 @@ private fun BackgroundLogo() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(40.dp)
-                .semantics {
-                    contentDescription = "Logo de fondo de la aplicación"
-                },
-            alpha = 0.08f,
+                .semantics { contentDescription = "Logo de fondo de la aplicación" }
+                .alpha(0.08f),
             contentScale = ContentScale.Fit
         )
-    }
-}
-
-@Composable
-private fun FormHeader(currentStep: BasePriceFormStep, isEditing: Boolean) {
-    val animatedProgress by animateFloatAsState(
-        targetValue = when (currentStep) {
-            BasePriceFormStep.FORM -> 0.5f
-            BasePriceFormStep.CONFIRMATION -> 1.0f
-        },
-        animationSpec = tween(durationMillis = 300),
-        label = "progress_animation"
-    )
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = if (isEditing) "Editar Precio Base" else "Registro de Precio Base",
-            style = MaterialTheme.typography.headlineSmall,
-            color = AppColors.TextColor,
-            fontWeight = FontWeight.Bold
-        )
-
-        LinearProgressIndicator(
-            progress = { animatedProgress },
-            modifier = Modifier.fillMaxWidth(),
-            color = AppColors.Primary
-        )
-
-        Text(
-            text = when (currentStep) {
-                BasePriceFormStep.FORM -> "Paso 1: Información del Precio"
-                BasePriceFormStep.CONFIRMATION -> "Paso 2: Confirmación"
-            },
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun BasePriceFormContent(
-    name: String,
-    priceText: String,
-    description: String,
-    validationResult: BasePriceValidationResult,
-    formState: BasePriceFormState,
-    existingFranchises: List<FranchiseEntity>,
-    selectedFranchiseId: Long?,
-    onNameChange: (String) -> Unit,
-    onPriceChange: (String) -> Unit,
-    onDescriptionChange: (String) -> Unit,
-    onFranchiseSelected: (Long) -> Unit,
-    focusManager: FocusManager
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Selector de franquicias
-        var expanded by remember { mutableStateOf(false) }
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            OutlinedTextField(
-                modifier = Modifier.menuAnchor(),
-                readOnly = true,
-                value = existingFranchises.find { it.id == selectedFranchiseId }?.name ?: "Selecciona una sucursal",
-                onValueChange = { },
-                label = { Text("Sucursal") },
-                isError = validationResult.franchiseError != null,
-                supportingText = {
-                    validationResult.franchiseError?.let {
-                        Text(text = it, color = MaterialTheme.colorScheme.error)
-                    }
-                },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                existingFranchises.forEach { franchise ->
-                    DropdownMenuItem(
-                        text = { Text(franchise.name) },
-                        onClick = {
-                            onFranchiseSelected(franchise.id)
-                            expanded = false
-                        },
-                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                    )
-                }
-            }
-        }
-
-        // Campos de texto para nombre, precio y descripción
-        OutlinedTextField(
-            value = name,
-            onValueChange = onNameChange,
-            label = { Text("Nombre del Precio") },
-            placeholder = { Text("Ej: Cuota General, Descuento Hermanos") },
-            isError = validationResult.nameError != null || validationResult.duplicateError != null,
-            supportingText = {
-                (validationResult.nameError ?: validationResult.duplicateError)?.let {
-                    Text(text = it, color = MaterialTheme.colorScheme.error)
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            enabled = formState !is BasePriceFormState.Loading,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Next
-            ),
-            keyboardActions = KeyboardActions(
-                onNext = { focusManager.moveFocus(FocusDirection.Down) }
-            ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AppColors.Primary,
-                focusedLabelColor = AppColors.Primary
-            )
-        )
-        OutlinedTextField(
-            value = priceText,
-            onValueChange = onPriceChange,
-            label = { Text("Monto") },
-            placeholder = { Text("Ej: 500.00") },
-            isError = validationResult.priceError != null,
-            supportingText = {
-                validationResult.priceError?.let {
-                    Text(text = it, color = MaterialTheme.colorScheme.error)
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            enabled = formState !is BasePriceFormState.Loading,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Next
-            ),
-            keyboardActions = KeyboardActions(
-                onNext = { focusManager.moveFocus(FocusDirection.Down) }
-            ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AppColors.Primary,
-                focusedLabelColor = AppColors.Primary
-            )
-        )
-        OutlinedTextField(
-            value = description,
-            onValueChange = onDescriptionChange,
-            label = { Text("Descripción (opcional)") },
-            placeholder = { Text("Ej: Precio regular por un estudiante") },
-            modifier = Modifier.fillMaxWidth(),
-            maxLines = 4,
-            enabled = formState !is BasePriceFormState.Loading,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = { focusManager.clearFocus() }
-            ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AppColors.Primary,
-                focusedLabelColor = AppColors.Primary
-            )
-        )
-    }
-}
-
-@Composable
-private fun BasePriceConfirmationContent(
-    name: String,
-    price: String,
-    description: String,
-    franchiseName: String,
-    formState: BasePriceFormState,
-    isEditing: Boolean
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFFF5F5F5)
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = if (isEditing) "Confirmar Edición de Precio" else "Confirmar Registro de Precio",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = AppColors.TextColor
-                )
-                HorizontalDivider(
-                    color = AppColors.Primary.copy(alpha = 0.3f),
-                    thickness = 1.dp
-                )
-                InfoRow(label = "Sucursal:", value = franchiseName)
-                InfoRow(label = "Nombre:", value = name)
-                InfoRow(label = "Precio:", value = "$ ${"%.2f".format(price.toDoubleOrNull() ?: 0.0)}")
-                if (description.isNotEmpty()) {
-                    InfoRow(label = "Descripción:", value = description)
-                }
-            }
-        }
-        if (formState is BasePriceFormState.Error) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    text = formState.message,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = AppColors.TextColor,
-            modifier = Modifier.width(110.dp)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = AppColors.Primary,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-private fun NavigationButtons(
-    currentStep: BasePriceFormStep,
-    formState: BasePriceFormState,
-    onDismiss: () -> Unit,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-    isEditing: Boolean
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Button(
-            onClick = onDismiss,
-            modifier = Modifier.weight(1f),
-            enabled = formState !is BasePriceFormState.Loading,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFff8abe),
-                disabledContainerColor = Color(0xFFff8abe).copy(alpha = 0.6f)
-            ),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Text("Cancelar", fontSize = 12.sp)
-        }
-
-        if (currentStep == BasePriceFormStep.CONFIRMATION) {
-            Button(
-                onClick = onPrevious,
-                modifier = Modifier.weight(1f),
-                enabled = formState !is BasePriceFormState.Loading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFff8abe),
-                    disabledContainerColor = Color(0xFFff8abe).copy(alpha = 0.6f)
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Atrás", fontSize = 12.sp)
-            }
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        Button(
-            onClick = onNext,
-            enabled = formState !is BasePriceFormState.Loading,
-            modifier = Modifier.weight(1f),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFff8abe),
-                disabledContainerColor = Color(0xFFff8abe).copy(alpha = 0.6f)
-            ),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            if (formState is BasePriceFormState.Loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    color = Color.White,
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Text(
-                    text = when {
-                        currentStep == BasePriceFormStep.CONFIRMATION && isEditing -> "Actualizar"
-                        currentStep == BasePriceFormStep.CONFIRMATION -> "Registrar"
-                        else -> "Siguiente"
-                    },
-                    fontSize = 12.sp,
-                )
-            }
-        }
     }
 }
