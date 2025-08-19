@@ -12,7 +12,11 @@ import org.example.appbbmges.FranchiseBoutiqueInventoryEntity
 import org.example.appbbmges.FranchiseDisciplineEntity
 import org.example.appbbmges.FranchiseEntity
 import org.example.appbbmges.FranchiseTeacherEntity
+import org.example.appbbmges.FranchiseeEntity
+import org.example.appbbmges.LevelEntity
+import org.example.appbbmges.MembershipEntity
 import org.example.appbbmges.PaymentEntity
+import org.example.appbbmges.PrecioBaseEntity
 import org.example.appbbmges.PromotionEntity
 import org.example.appbbmges.RoleEntity
 import org.example.appbbmges.ScheduleEntity
@@ -25,16 +29,33 @@ import org.example.appbbmges.TeacherEntity
 import org.example.appbbmges.TeacherReportEntity
 import org.example.appbbmges.TrialClassEntity
 import org.example.appbbmges.UserEntity
-import org.example.appbbmges.FranchiseeEntity
-import org.example.appbbmges.LevelEntity
-import org.example.appbbmges.PrecioBaseSelectAll
-import org.example.appbbmges.PrecioBaseSelectById
-import org.example.appbbmges.PrecioBaseSelectByFranchiseId
-import org.example.appbbmges.PrecioBaseSelectActive
-import org.example.appbbmges.PrecioBaseSelectActiveByFranchiseId
-
 
 class Repository(private val database: AppDatabaseBaby) {
+
+    // --- RoleEntity ---
+    fun insertRole(name: String, description: String?) {
+        database.expensesDbQueries.roleCreate(name, description)
+    }
+
+    fun getAllRoles(): List<RoleEntity> {
+        return database.expensesDbQueries.roleSelectAll().executeAsList()
+    }
+
+    fun getRoleById(id: Long): RoleEntity? {
+        return database.expensesDbQueries.roleSelectById(id).executeAsOneOrNull()
+    }
+
+    fun updateRole(id: Long, name: String, description: String?) {
+        database.expensesDbQueries.roleUpdate(name, description, id)
+    }
+
+    fun deleteRole(id: Long) {
+        database.expensesDbQueries.roleDelete(id)
+    }
+
+    fun getRoleCount(): Long {
+        return database.expensesDbQueries.roleCount().executeAsOne()
+    }
 
     // --- UserEntity ---
     fun insertUser(username: String, password: String, roleId: Long, franchiseId: Long, active: Long = 1) {
@@ -63,31 +84,6 @@ class Repository(private val database: AppDatabaseBaby) {
 
     fun getUserCount(): Long {
         return database.expensesDbQueries.countUsers().executeAsOne()
-    }
-
-    // --- RoleEntity ---
-    fun insertRole(name: String, description: String?) {
-        database.expensesDbQueries.roleCreate(name, description)
-    }
-
-    fun getAllRoles(): List<RoleEntity> {
-        return database.expensesDbQueries.roleSelectAll().executeAsList()
-    }
-
-    fun getRoleById(id: Long): RoleEntity? {
-        return database.expensesDbQueries.roleSelectById(id).executeAsOneOrNull()
-    }
-
-    fun updateRole(id: Long, name: String, description: String?) {
-        database.expensesDbQueries.roleUpdate(name, description, id)
-    }
-
-    fun deleteRole(id: Long) {
-        database.expensesDbQueries.roleDelete(id)
-    }
-
-    fun getRoleCount(): Long {
-        return database.expensesDbQueries.roleCount().executeAsOne()
     }
 
     // --- FranchiseEntity ---
@@ -195,7 +191,7 @@ class Repository(private val database: AppDatabaseBaby) {
     }
 
     fun getDisciplinesByBaseName(baseName: String): List<DisciplineSelectByBaseName> {
-        return database.expensesDbQueries.disciplineSelectByBaseName("$baseName%").executeAsList()
+        return database.expensesDbQueries.disciplineSelectByBaseName(baseName).executeAsList()
     }
 
     fun updateDiscipline(id: Long, name: String, levelId: Long) {
@@ -862,6 +858,7 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.teacherReportCount().executeAsOne()
     }
 
+    // --- Otras consultas personalizadas ---
     fun getActiveBranchesCount(): Long {
         return database.expensesDbQueries.activeBranchesCount().executeAsOne()
     }
@@ -873,45 +870,22 @@ class Repository(private val database: AppDatabaseBaby) {
         return Pair(maleCount, femaleCount)
     }
 
+
     // --- PrecioBaseEntity ---
-    fun insertPrecioBase(
-        franchiseId: Long,
-        nombre: String,
-        precioCosto: Double,
-        descripcion: String?,
-        activo: Long = 1,
-        fechaCreacion: String,
-        fechaActualizacion: String? = null
-    ) {
-        database.expensesDbQueries.precioBaseCreate(
-            franchiseId, nombre, precioCosto, descripcion, activo, fechaCreacion, fechaActualizacion
-        )
+    fun insertPrecioBase(precio: Double) {
+        database.expensesDbQueries.precioBaseCreate(precio)
     }
 
-    fun getAllPreciosBase(): List<PrecioBaseSelectAll> {
+    fun getAllPreciosBase(): List<PrecioBaseEntity> {
         return database.expensesDbQueries.precioBaseSelectAll().executeAsList()
     }
 
-    fun getPrecioBaseById(id: Long): PrecioBaseSelectById? {
+    fun getPrecioBaseById(id: Long): PrecioBaseEntity? {
         return database.expensesDbQueries.precioBaseSelectById(id).executeAsOneOrNull()
     }
 
-    fun getPreciosBaseByFranchiseId(franchiseId: Long): List<PrecioBaseSelectByFranchiseId> {
-        return database.expensesDbQueries.precioBaseSelectByFranchiseId(franchiseId).executeAsList()
-    }
-
-    fun updatePrecioBase(
-        id: Long,
-        franchiseId: Long,
-        nombre: String,
-        precioCosto: Double,
-        descripcion: String?,
-        activo: Long,
-        fechaActualizacion: String
-    ) {
-        database.expensesDbQueries.precioBaseUpdate(
-            franchiseId, nombre, precioCosto, descripcion, activo, fechaActualizacion, id
-        )
+    fun updatePrecioBase(id: Long, precio: Double) {
+        database.expensesDbQueries.precioBaseUpdate(precio, id)
     }
 
     fun deletePrecioBase(id: Long) {
@@ -922,14 +896,30 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.precioBaseCount().executeAsOne()
     }
 
-    fun getActivePreciosBase(): List<PrecioBaseSelectActive> {
-        return database.expensesDbQueries.precioBaseSelectActive().executeAsList()
+    // Dentro de la clase Repository
+    fun insertMembership(name: String, months_paid: Long, months_saved: Double) {
+        database.expensesDbQueries.membershipCreate(name, months_paid, months_saved)
     }
 
-    fun getActivePreciosBaseByFranchiseId(franchiseId: Long): List<PrecioBaseSelectActiveByFranchiseId> {
-        return database.expensesDbQueries.precioBaseSelectActiveByFranchiseId(franchiseId).executeAsList()
+    fun getAllMemberships(): List<MembershipEntity> {
+        return database.expensesDbQueries.membershipSelectAll().executeAsList()
     }
 
+    fun getMembershipById(id: Long): MembershipEntity? {
+        return database.expensesDbQueries.membershipSelectById(id).executeAsOneOrNull()
+    }
+
+    fun updateMembership(id: Long, name: String, months_paid: Long, months_saved: Double) {
+        database.expensesDbQueries.membershipUpdate(name, months_paid, months_saved, id)
+    }
+
+    fun deleteMembership(id: Long) {
+        database.expensesDbQueries.membershipDelete(id)
+    }
+
+    fun getMembershipCount(): Long {
+        return database.expensesDbQueries.membershipCount().executeAsOne()
+    }
     fun initializeData() {
         val existingUsers = getUserCount()
         if (existingUsers == 0L) {

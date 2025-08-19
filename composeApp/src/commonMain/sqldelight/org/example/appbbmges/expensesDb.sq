@@ -862,6 +862,9 @@ CREATE TABLE TeacherReportEntity (
     FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id)
 );
 
+activeBranchesCount:
+SELECT COUNT(*) FROM FranchiseEntity WHERE active = 1;
+
 teacherReportCreate:
 INSERT INTO TeacherReportEntity (teacher_id, franchise_id, report_type, report_date, observation)
 VALUES (?, ?, ?, ?, ?);
@@ -888,41 +891,23 @@ SELECT COUNT(*) FROM TeacherReportEntity;
 
 -- PrecioBaseEntity
 CREATE TABLE PrecioBaseEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    franchise_id INTEGER NOT NULL,
-    nombre TEXT NOT NULL,
-    precio_costo REAL NOT NULL,
-    descripcion TEXT,
-    activo INTEGER NOT NULL DEFAULT 1,
-    fecha_creacion TEXT NOT NULL,
-    fecha_actualizacion TEXT,
-    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id)
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    precio REAL NOT NULL
 );
 
 precioBaseCreate:
-INSERT INTO PrecioBaseEntity (franchise_id, nombre, precio_costo, descripcion, activo, fecha_creacion, fecha_actualizacion)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO PrecioBaseEntity(precio)
+VALUES (?);
 
 precioBaseSelectAll:
-SELECT pb.id, pb.franchise_id, pb.nombre, pb.precio_costo, pb.descripcion, pb.activo, pb.fecha_creacion, pb.fecha_actualizacion, f.name AS franchise_name
-FROM PrecioBaseEntity pb
-JOIN FranchiseEntity f ON pb.franchise_id = f.id;
+SELECT * FROM PrecioBaseEntity;
 
 precioBaseSelectById:
-SELECT pb.id, pb.franchise_id, pb.nombre, pb.precio_costo, pb.descripcion, pb.activo, pb.fecha_creacion, pb.fecha_actualizacion, f.name AS franchise_name
-FROM PrecioBaseEntity pb
-JOIN FranchiseEntity f ON pb.franchise_id = f.id
-WHERE pb.id = ?;
-
-precioBaseSelectByFranchiseId:
-SELECT pb.id, pb.franchise_id, pb.nombre, pb.precio_costo, pb.descripcion, pb.activo, pb.fecha_creacion, pb.fecha_actualizacion, f.name AS franchise_name
-FROM PrecioBaseEntity pb
-JOIN FranchiseEntity f ON pb.franchise_id = f.id
-WHERE pb.franchise_id = ?;
+SELECT * FROM PrecioBaseEntity WHERE id = ?;
 
 precioBaseUpdate:
 UPDATE PrecioBaseEntity
-SET franchise_id = ?, nombre = ?, precio_costo = ?, descripcion = ?, activo = ?, fecha_actualizacion = ?
+SET precio = ?
 WHERE id = ?;
 
 precioBaseDelete:
@@ -931,17 +916,31 @@ DELETE FROM PrecioBaseEntity WHERE id = ?;
 precioBaseCount:
 SELECT COUNT(*) FROM PrecioBaseEntity;
 
-precioBaseSelectActive:
-SELECT pb.id, pb.franchise_id, pb.nombre, pb.precio_costo, pb.descripcion, pb.activo, pb.fecha_creacion, pb.fecha_actualizacion, f.name AS franchise_name
-FROM PrecioBaseEntity pb
-JOIN FranchiseEntity f ON pb.franchise_id = f.id
-WHERE pb.activo = 1;
+-- MembershipEntity
+CREATE TABLE MembershipEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    months_paid INTEGER NOT NULL,
+    months_saved REAL NOT NULL
+);
 
-precioBaseSelectActiveByFranchiseId:
-SELECT pb.id, pb.franchise_id, pb.nombre, pb.precio_costo, pb.descripcion, pb.activo, pb.fecha_creacion, pb.fecha_actualizacion, f.name AS franchise_name
-FROM PrecioBaseEntity pb
-JOIN FranchiseEntity f ON pb.franchise_id = f.id
-WHERE pb.franchise_id = ? AND pb.activo = 1;
+membershipCreate:
+INSERT INTO MembershipEntity (name, months_paid, months_saved)
+VALUES (?, ?, ?);
 
-activeBranchesCount:
-SELECT COUNT(*) FROM FranchiseEntity WHERE active = 1;
+membershipSelectAll:
+SELECT * FROM MembershipEntity;
+
+membershipSelectById:
+SELECT * FROM MembershipEntity WHERE id = ?;
+
+membershipUpdate:
+UPDATE MembershipEntity
+SET name = ?, months_paid = ?, months_saved = ?
+WHERE id = ?;
+
+membershipDelete:
+DELETE FROM MembershipEntity WHERE id = ?;
+
+membershipCount:
+SELECT COUNT(*) FROM MembershipEntity;
