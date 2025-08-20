@@ -313,9 +313,6 @@ class PaymentCalculator(
         )
     }
 
-    /**
-     * Aplica ajuste por timing de pago
-     */
     private fun applyTimingAdjustment(amount: Double, timing: PaymentTiming): Double {
         return amount * timing.multiplier
     }

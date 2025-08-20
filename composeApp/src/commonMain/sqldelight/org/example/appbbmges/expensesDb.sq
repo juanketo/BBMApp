@@ -1,4 +1,4 @@
--- expensesDb.sq
+-- expensesDb.sql
 
 -- RoleEntity
 CREATE TABLE RoleEntity (
@@ -97,7 +97,7 @@ SELECT * FROM FranchiseEntity WHERE id = ?;
 
 franchiseUpdate:
 UPDATE FranchiseEntity
-SET name = ?, email = ?, phone = ?, base_price = ?, currency = ?, address_street = ?, address_number = ?, address_neighborhood = ?, address_zip = ?, address_city = ?, address_country = ?, tax_name = ?, tax_id = ?, zone = ?, is_new = ?, active = ?
+SET name = ?, email = ?, phone = ?, base_price = ?, currency = ?, address_street = ?, address_number = ?, address_zip = ?, address_city = ?, address_country = ?, tax_name = ?, tax_id = ?, zone = ?, is_new = ?, active = ?
 WHERE id = ?;
 
 franchiseDelete:
@@ -105,6 +105,9 @@ DELETE FROM FranchiseEntity WHERE id = ?;
 
 franchiseCount:
 SELECT COUNT(*) FROM FranchiseEntity;
+
+activeBranchesCount:
+SELECT COUNT(*) FROM FranchiseEntity WHERE active = 1;
 
 -- LevelEntity
 CREATE TABLE LevelEntity (
@@ -675,45 +678,6 @@ DELETE FROM PromotionEntity WHERE id = ?;
 promotionCount:
 SELECT COUNT(*) FROM PromotionEntity;
 
--- PaymentEntity
-CREATE TABLE PaymentEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    student_id INTEGER NOT NULL,
-    franchise_id INTEGER NOT NULL,
-    amount REAL NOT NULL,
-    payment_date TEXT NOT NULL,
-    payment_type TEXT NOT NULL,
-    event_id INTEGER,
-    reference TEXT,
-    FOREIGN KEY(student_id) REFERENCES StudentEntity(id),
-    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id),
-    FOREIGN KEY(event_id) REFERENCES EventEntity(id)
-);
-
-paymentCreate:
-INSERT INTO PaymentEntity (student_id, franchise_id, amount, payment_date, payment_type, event_id, reference)
-VALUES (?, ?, ?, ?, ?, ?, ?);
-
-paymentSelectAll:
-SELECT * FROM PaymentEntity;
-
-paymentSelectById:
-SELECT * FROM PaymentEntity WHERE id = ?;
-
-paymentSelectByStudentId:
-SELECT * FROM PaymentEntity WHERE student_id = ?;
-
-paymentUpdate:
-UPDATE PaymentEntity
-SET student_id = ?, franchise_id = ?, amount = ?, payment_date = ?, payment_type = ?, event_id = ?, reference = ?
-WHERE id = ?;
-
-paymentDelete:
-DELETE FROM PaymentEntity WHERE id = ?;
-
-paymentCount:
-SELECT COUNT(*) FROM PaymentEntity;
-
 -- EventEntity
 CREATE TABLE EventEntity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -745,6 +709,46 @@ DELETE FROM EventEntity WHERE id = ?;
 
 eventCount:
 SELECT COUNT(*) FROM EventEntity;
+
+-- EventPaymentEntity
+CREATE TABLE EventPaymentEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL,
+    franchise_id INTEGER NOT NULL,
+    amount REAL NOT NULL,
+    payment_date TEXT NOT NULL,
+    payment_type TEXT NOT NULL,
+    event_id INTEGER,
+    reference TEXT,
+    FOREIGN KEY(student_id) REFERENCES StudentEntity(id),
+    FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id),
+    FOREIGN KEY(event_id) REFERENCES EventEntity(id)
+);
+
+-- EventPaymentEntity
+eventPaymentCreate:
+INSERT INTO EventPaymentEntity (student_id, franchise_id, amount, payment_date, payment_type, event_id, reference)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+eventPaymentSelectAll:
+SELECT * FROM EventPaymentEntity;
+
+eventPaymentSelectById:
+SELECT * FROM EventPaymentEntity WHERE id = ?;
+
+eventPaymentSelectByStudentId:
+SELECT * FROM EventPaymentEntity WHERE student_id = ?;
+
+eventPaymentUpdate:
+UPDATE EventPaymentEntity
+SET student_id = ?, franchise_id = ?, amount = ?, payment_date = ?, payment_type = ?, event_id = ?, reference = ?
+WHERE id = ?;
+
+eventPaymentDelete:
+DELETE FROM EventPaymentEntity WHERE id = ?;
+
+eventPaymentCount:
+SELECT COUNT(*) FROM EventPaymentEntity;
 
 -- AdministrativeEntity
 CREATE TABLE AdministrativeEntity (
@@ -862,9 +866,6 @@ CREATE TABLE TeacherReportEntity (
     FOREIGN KEY(franchise_id) REFERENCES FranchiseEntity(id)
 );
 
-activeBranchesCount:
-SELECT COUNT(*) FROM FranchiseEntity WHERE active = 1;
-
 teacherReportCreate:
 INSERT INTO TeacherReportEntity (teacher_id, franchise_id, report_type, report_date, observation)
 VALUES (?, ?, ?, ?, ?);
@@ -891,12 +892,12 @@ SELECT COUNT(*) FROM TeacherReportEntity;
 
 -- PrecioBaseEntity
 CREATE TABLE PrecioBaseEntity (
-    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     precio REAL NOT NULL
 );
 
 precioBaseCreate:
-INSERT INTO PrecioBaseEntity(precio)
+INSERT INTO PrecioBaseEntity (precio)
 VALUES (?);
 
 precioBaseSelectAll:
@@ -944,3 +945,44 @@ DELETE FROM MembershipEntity WHERE id = ?;
 
 membershipCount:
 SELECT COUNT(*) FROM MembershipEntity;
+
+-- PaymentEntity
+CREATE TABLE PaymentEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL,
+    amount REAL NOT NULL,
+    description TEXT NOT NULL,
+    payment_date INTEGER NOT NULL,
+    base_amount REAL NOT NULL,
+    discount REAL NOT NULL,
+    membership_info TEXT,
+    FOREIGN KEY(student_id) REFERENCES StudentEntity(id)
+);
+
+insertPayment:
+INSERT INTO PaymentEntity (student_id, amount, description, payment_date, base_amount, discount, membership_info)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+getPaymentsByStudentId:
+SELECT * FROM PaymentEntity
+WHERE student_id = ?
+ORDER BY payment_date DESC;
+
+getAllPayments:
+SELECT * FROM PaymentEntity;
+
+getPaymentById:
+SELECT * FROM PaymentEntity
+WHERE id = ?;
+
+updatePayment:
+UPDATE PaymentEntity
+SET amount = ?, description = ?, payment_date = ?, base_amount = ?, discount = ?, membership_info = ?
+WHERE id = ?;
+
+deletePayment:
+DELETE FROM PaymentEntity
+WHERE id = ?;
+
+paymentCount:
+SELECT COUNT(*) FROM PaymentEntity;

@@ -108,14 +108,13 @@ class Repository(private val database: AppDatabaseBaby) {
     }
 
     fun updateFranchise(
-        id: Long, name: String, email: String?, phone: String?, basePrice: Double?, currency: String?,
-        addressStreet: String?, addressNumber: String?, addressNeighborhood: String?, addressZip: String?,
-        addressCity: String?, addressCountry: String?, taxName: String?, taxId: String?, zone: String?,
+        id: Long, name: String, email: String?, phone: String?, basePrice: Double?, currency: String?, addressStreet: String?, addressNumber: String?,
+        addressNeighborhood: String?, addressZip: String?, addressCity: String?, addressCountry: String?, taxName: String?, taxId: String?, zone: String?,
         isNew: Long, active: Long
     ) {
         database.expensesDbQueries.franchiseUpdate(
-            name, email, phone, basePrice, currency, addressStreet, addressNumber, addressNeighborhood,
-            addressZip, addressCity, addressCountry, taxName, taxId, zone, isNew, active, id
+            name, email, phone, basePrice, currency, addressStreet, addressNumber, addressZip,
+            addressCity, addressCountry, taxName, taxId, zone, isNew, active, id
         )
     }
 
@@ -673,35 +672,6 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.promotionCount().executeAsOne()
     }
 
-    // --- PaymentEntity ---
-    fun insertPayment(studentId: Long, franchiseId: Long, amount: Double, paymentDate: String, paymentType: String, eventId: Long?, reference: String?) {
-        database.expensesDbQueries.paymentCreate(studentId, franchiseId, amount, paymentDate, paymentType, eventId, reference)
-    }
-
-    fun getAllPayments(): List<PaymentEntity> {
-        return database.expensesDbQueries.paymentSelectAll().executeAsList()
-    }
-
-    fun getPaymentById(id: Long): PaymentEntity? {
-        return database.expensesDbQueries.paymentSelectById(id).executeAsOneOrNull()
-    }
-
-    fun getPaymentsByStudentId(studentId: Long): List<PaymentEntity> {
-        return database.expensesDbQueries.paymentSelectByStudentId(studentId).executeAsList()
-    }
-
-    fun updatePayment(id: Long, studentId: Long, franchiseId: Long, amount: Double, paymentDate: String, paymentType: String, eventId: Long?, reference: String?) {
-        database.expensesDbQueries.paymentUpdate(studentId, franchiseId, amount, paymentDate, paymentType, eventId, reference, id)
-    }
-
-    fun deletePayment(id: Long) {
-        database.expensesDbQueries.paymentDelete(id)
-    }
-
-    fun getPaymentCount(): Long {
-        return database.expensesDbQueries.paymentCount().executeAsOne()
-    }
-
     // --- EventEntity ---
     fun insertEvent(name: String, description: String?, eventDate: String, type: String, cost: Double, ticketsAvailable: Long) {
         database.expensesDbQueries.eventCreate(name, description, eventDate, type, cost, ticketsAvailable)
@@ -858,19 +828,6 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.teacherReportCount().executeAsOne()
     }
 
-    // --- Otras consultas personalizadas ---
-    fun getActiveBranchesCount(): Long {
-        return database.expensesDbQueries.activeBranchesCount().executeAsOne()
-    }
-
-    fun getStudentsByGender(): Pair<Long, Long> {
-        val students = database.expensesDbQueries.studentSelectAll().executeAsList()
-        val maleCount = students.count { it.gender.equals("masculino", ignoreCase = true) }.toLong()
-        val femaleCount = students.count { it.gender.equals("femenino", ignoreCase = true) }.toLong()
-        return Pair(maleCount, femaleCount)
-    }
-
-
     // --- PrecioBaseEntity ---
     fun insertPrecioBase(precio: Double) {
         database.expensesDbQueries.precioBaseCreate(precio)
@@ -896,9 +853,9 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.precioBaseCount().executeAsOne()
     }
 
-    // Dentro de la clase Repository
-    fun insertMembership(name: String, months_paid: Long, months_saved: Double) {
-        database.expensesDbQueries.membershipCreate(name, months_paid, months_saved)
+    // --- MembershipEntity ---
+    fun insertMembership(name: String, monthsPaid: Long, monthsSaved: Double) {
+        database.expensesDbQueries.membershipCreate(name, monthsPaid, monthsSaved)
     }
 
     fun getAllMemberships(): List<MembershipEntity> {
@@ -909,8 +866,8 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.membershipSelectById(id).executeAsOneOrNull()
     }
 
-    fun updateMembership(id: Long, name: String, months_paid: Long, months_saved: Double) {
-        database.expensesDbQueries.membershipUpdate(name, months_paid, months_saved, id)
+    fun updateMembership(id: Long, name: String, monthsPaid: Long, monthsSaved: Double) {
+        database.expensesDbQueries.membershipUpdate(name, monthsPaid, monthsSaved, id)
     }
 
     fun deleteMembership(id: Long) {
@@ -920,6 +877,66 @@ class Repository(private val database: AppDatabaseBaby) {
     fun getMembershipCount(): Long {
         return database.expensesDbQueries.membershipCount().executeAsOne()
     }
+
+    fun insertPayment(
+        studentId: Long,
+        amount: Double,
+        description: String,
+        paymentDate: Long,
+        baseAmount: Double,
+        discount: Double,
+        membershipInfo: String?
+    ) {
+        database.expensesDbQueries.insertPayment(
+            studentId, amount, description, paymentDate, baseAmount, discount, membershipInfo
+        )
+    }
+    fun getAllPayments(): List<PaymentEntity> {
+        return database.expensesDbQueries.getAllPayments().executeAsList()
+    }
+
+    fun getPaymentById(id: Long): PaymentEntity? {
+        return database.expensesDbQueries.getPaymentById(id).executeAsOneOrNull()
+    }
+
+    fun getPaymentsByStudentId(studentId: Long): List<PaymentEntity> {
+        return database.expensesDbQueries.getPaymentsByStudentId(studentId).executeAsList()
+    }
+    fun updatePayment(
+        id: Long,
+        studentId: Long,
+        amount: Double,
+        description: String,
+        paymentDate: Long,
+        baseAmount: Double,
+        discount: Double,
+        membershipInfo: String?
+    ) {
+        database.expensesDbQueries.updatePayment(
+            amount, description, paymentDate, baseAmount, discount, membershipInfo, id
+        )
+    }
+
+    fun deletePayment(id: Long) {
+        database.expensesDbQueries.deletePayment(id)
+    }
+
+    fun getPaymentCount(): Long {
+        return database.expensesDbQueries.paymentCount().executeAsOne()
+    }
+
+    // --- Otras consultas personalizadas ---
+    fun getActiveBranchesCount(): Long {
+        return database.expensesDbQueries.activeBranchesCount().executeAsOne()
+    }
+
+    fun getStudentsByGender(): Pair<Long, Long> {
+        val students = database.expensesDbQueries.studentSelectAll().executeAsList()
+        val maleCount = students.count { it.gender.equals("masculino", ignoreCase = true) }.toLong()
+        val femaleCount = students.count { it.gender.equals("femenino", ignoreCase = true) }.toLong()
+        return Pair(maleCount, femaleCount)
+    }
+
     fun initializeData() {
         val existingUsers = getUserCount()
         if (existingUsers == 0L) {

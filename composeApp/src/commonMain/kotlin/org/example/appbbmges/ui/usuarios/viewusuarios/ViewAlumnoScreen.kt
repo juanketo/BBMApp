@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +13,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +28,8 @@ import org.example.appbbmges.data.Repository
 import org.example.appbbmges.navigation.SimpleNavController
 import org.example.appbbmges.StudentEntity
 import org.example.appbbmges.StudentAuthorizedAdultEntity
+import org.example.appbbmges.PaymentEntity
+import kotlinx.datetime.*
 
 object AppColors {
     val Primary = Color(0xFF00B4D8)
@@ -49,6 +55,11 @@ fun ViewAlumnoScreen(
     }
 
     var selectedSection by remember { mutableStateOf("personal") }
+    val payments by produceState<List<PaymentEntity>>(emptyList(), studentId, selectedSection) {
+        if (selectedSection == "financiera") {
+            value = repository.getPaymentsByStudentId(studentId)
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Barra superior con título y botones
@@ -167,7 +178,7 @@ fun ViewAlumnoScreen(
                                     textAlign = TextAlign.Center
                                 )
                                 Text(
-                                    text = "Última actualización: 15-11-2025",
+                                    text = "Última actualización: ${getCurrentDate()}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color(0xFF9CA3AF),
                                     textAlign = TextAlign.Center
@@ -185,178 +196,51 @@ fun ViewAlumnoScreen(
                             NavigationItem(
                                 text = "Información Personal",
                                 isSelected = selectedSection == "personal",
-                                onClick = { selectedSection = "personal" }
+                                onClick = { selectedSection = "personal" },
+                                icon = Icons.Default.Person
                             )
                             NavigationItem(
                                 text = "Información Financiera",
                                 isSelected = selectedSection == "financiera",
-                                onClick = { selectedSection = "financiera" }
+                                onClick = { selectedSection = "financiera" },
+                                icon = Icons.Default.AttachMoney
                             )
                             NavigationItem(
                                 text = "Calendario de clases",
                                 isSelected = selectedSection == "calendario",
-                                onClick = { selectedSection = "calendario" }
+                                onClick = { selectedSection = "calendario" },
+                                icon = Icons.Default.CalendarToday
                             )
                         }
                     }
                 }
 
+                // Panel derecho - Contenido de la sección seleccionada
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    // Información Personal
-                    FormSection(
-                        title = "INFORMACIÓN PERSONAL",
-                        content = {
-                            FormGrid {
-                                FormField(
-                                    label = "Nombre",
-                                    value = student.first_name ?: "",
-                                    modifier = Modifier.weight(1f)
-                                )
-                                FormField(
-                                    label = "Apellidos",
-                                    value = "${student.last_name_paternal ?: ""} ${student.last_name_maternal ?: ""}".trim(),
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-
-                            FormGrid {
-                                FormField(
-                                    label = "Estado",
-                                    value = "Activo",
-                                    modifier = Modifier.weight(1f)
-                                )
-                                FormField(
-                                    label = "Fecha de Nacimiento",
-                                    value = student.birth_date ?: "",
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-
-                            FormGrid {
-                                FormField(
-                                    label = "Correo Electrónico",
-                                    value = student.email ?: "",
-                                    modifier = Modifier.weight(1f)
-                                )
-                                FormField(
-                                    label = "Teléfono",
-                                    value = student.phone ?: "",
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-
-                            FormField(
-                                label = "CURP",
-                                value = student.curp ?: "",
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                    when (selectedSection) {
+                        "personal" -> {
+                            StudentPersonalSection(student = student, adults = adults)
                         }
-                    )
-
-                    // Dirección Personal
-                    FormSection(
-                        title = "DIRECCIÓN PERSONAL",
-                        content = {
-                            FormGrid {
-                                FormField(
-                                    label = "Dirección",
-                                    value = student.address_street ?: "",
-                                    modifier = Modifier.weight(1f)
-                                )
-                                FormField(
-                                    label = "Ciudad",
-                                    value = "", // Ajusta según tu modelo
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-
-                            FormGrid {
-                                FormField(
-                                    label = "País",
-                                    value = student.nationality ?: "",
-                                    modifier = Modifier.weight(1f)
-                                )
-                                FormField(
-                                    label = "Código Postal",
-                                    value = student.address_zip ?: "",
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    )
-
-                    // Información de Responsables
-                    FormSection(
-                        title = "RESPONSABLES",
-                        content = {
-                            FormGrid {
-                                FormField(
-                                    label = "Padre",
-                                    value = buildParentName(
-                                        student.parent_father_first_name,
-                                        student.parent_father_last_name_paternal,
-                                        student.parent_father_last_name_maternal
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                )
-                                FormField(
-                                    label = "Madre",
-                                    value = buildParentName(
-                                        student.parent_mother_first_name,
-                                        student.parent_mother_last_name_paternal,
-                                        student.parent_mother_last_name_maternal
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    )
-
-                    // Información Médica
-                    FormSection(
-                        title = "INFORMACIÓN MÉDICA",
-                        content = {
-                            FormGrid {
-                                FormField(
-                                    label = "Tipo Sanguíneo",
-                                    value = student.blood_type ?: "N/A",
-                                    modifier = Modifier.weight(1f)
-                                )
-                                FormField(
-                                    label = "Enfermedad Crónica",
-                                    value = student.chronic_disease ?: "Ninguna",
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    )
-
-                    // Adultos Autorizados
-                    if (adults.isNotEmpty()) {
-                        FormSection(
-                            title = "ADULTOS AUTORIZADOS (${adults.size})",
-                            content = {
-                                adults.chunked(2).forEach { pair ->
-                                    FormGrid {
-                                        pair.forEach { adult ->
-                                            FormField(
-                                                label = "Adulto Autorizado",
-                                                value = "${adult.first_name} ${adult.last_name_paternal ?: ""}",
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                        }
-                                        if (pair.size == 1) {
-                                            Spacer(modifier = Modifier.weight(1f))
-                                        }
+                        "financiera" -> {
+                            StudentFinancialSection(
+                                payments = payments,
+                                onNewPaymentClick = {
+                                    try {
+                                        navController.navigateBack()
+                                    } catch (e: Exception) {
+                                        println("Navegación a pagos pendiente para estudiante: $studentId")
                                     }
                                 }
-                            }
-                        )
+                            )
+                        }
+                        "calendario" -> {
+                            Text("Vista de Calendario de clases", style = MaterialTheme.typography.titleLarge)
+                        }
                     }
                 }
             }
@@ -371,11 +255,13 @@ fun ViewAlumnoScreen(
     }
 }
 
+// Componentes de apoyo
 @Composable
 private fun NavigationItem(
     text: String,
     isSelected: Boolean,
     onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -391,13 +277,6 @@ private fun NavigationItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-
-        val icon = when {
-            text.contains("Personal") -> Icons.Default.Person
-            text.contains("Financiera") -> Icons.Default.Person
-            else -> Icons.Default.Person
-        }
-
         Icon(
             icon,
             contentDescription = null,
@@ -410,6 +289,230 @@ private fun NavigationItem(
             color = if (isSelected) Color(0xFF6366F1) else Color(0xFF374151),
             fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
         )
+    }
+}
+
+@Composable
+private fun StudentPersonalSection(
+    student: StudentEntity,
+    adults: List<StudentAuthorizedAdultEntity>
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        // Información Personal
+        FormSection(
+            title = "INFORMACIÓN PERSONAL",
+            content = {
+                FormGrid {
+                    FormField(
+                        label = "Nombre",
+                        value = student.first_name ?: "",
+                        modifier = Modifier.weight(1f)
+                    )
+                    FormField(
+                        label = "Apellidos",
+                        value = "${student.last_name_paternal ?: ""} ${student.last_name_maternal ?: ""}".trim(),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                FormGrid {
+                    FormField(
+                        label = "Estado",
+                        value = if (student.active == 1L) "Activo" else "Inactivo",
+                        modifier = Modifier.weight(1f)
+                    )
+                    FormField(
+                        label = "Fecha de Nacimiento",
+                        value = student.birth_date ?: "",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                FormGrid {
+                    FormField(
+                        label = "Correo Electrónico",
+                        value = student.email ?: "",
+                        modifier = Modifier.weight(1f)
+                    )
+                    FormField(
+                        label = "Teléfono",
+                        value = student.phone ?: "",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                FormField(
+                    label = "CURP",
+                    value = student.curp ?: "",
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        )
+
+        // Dirección Personal
+        FormSection(
+            title = "DIRECCIÓN PERSONAL",
+            content = {
+                FormGrid {
+                    FormField(
+                        label = "Dirección",
+                        value = student.address_street ?: "",
+                        modifier = Modifier.weight(1f)
+                    )
+                    FormField(
+                        label = "Código Postal",
+                        value = student.address_zip ?: "",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        )
+
+        // Información de Responsables
+        FormSection(
+            title = "RESPONSABLES",
+            content = {
+                FormGrid {
+                    FormField(
+                        label = "Padre",
+                        value = buildParentName(
+                            student.parent_father_first_name,
+                            student.parent_father_last_name_paternal,
+                            student.parent_father_last_name_maternal
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    FormField(
+                        label = "Madre",
+                        value = buildParentName(
+                            student.parent_mother_first_name,
+                            student.parent_mother_last_name_paternal,
+                            student.parent_mother_last_name_maternal
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        )
+
+        // Información Médica
+        FormSection(
+            title = "INFORMACIÓN MÉDICA",
+            content = {
+                FormGrid {
+                    FormField(
+                        label = "Tipo Sanguíneo",
+                        value = student.blood_type ?: "N/A",
+                        modifier = Modifier.weight(1f)
+                    )
+                    FormField(
+                        label = "Enfermedad Crónica",
+                        value = student.chronic_disease ?: "Ninguna",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        )
+
+        // Adultos Autorizados
+        if (adults.isNotEmpty()) {
+            FormSection(
+                title = "ADULTOS AUTORIZADOS (${adults.size})",
+                content = {
+                    adults.chunked(2).forEach { pair ->
+                        FormGrid {
+                            pair.forEach { adult ->
+                                FormField(
+                                    label = "Adulto Autorizado",
+                                    value = "${adult.first_name} ${adult.last_name_paternal ?: ""}",
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            if (pair.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun StudentFinancialSection(
+    payments: List<PaymentEntity>,
+    onNewPaymentClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "HISTORIAL DE PAGOS",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF374151)
+                    )
+                    Button(onClick = onNewPaymentClick) {
+                        Text("Nuevo Pago")
+                    }
+                }
+
+                if (payments.isEmpty()) {
+                    Text(
+                        "No hay pagos registrados para este alumno.",
+                        modifier = Modifier.padding(16.dp),
+                        color = Color(0xFF6B7280)
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 500.dp)
+                    ) {
+                        items(payments) { payment ->
+                            PaymentItem(payment)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaymentItem(payment: PaymentEntity) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = AppColors.Background)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            val formattedDate = formatTimestamp(payment.payment_date)
+            Text("Fecha: $formattedDate", style = MaterialTheme.typography.bodyMedium)
+            Text("Monto: \$${payment.amount.toInt()}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AppColors.Primary)
+            Text("Descripción: ${payment.description}", style = MaterialTheme.typography.bodySmall)
+            if (payment.membership_info != null) {
+                Text("Membresía: ${payment.membership_info}", style = MaterialTheme.typography.bodySmall)
+            }
+        }
     }
 }
 
@@ -490,4 +593,17 @@ private fun buildParentName(
     return listOfNotNull(firstName, lastNameP, lastNameM)
         .joinToString(" ")
         .ifEmpty { "N/A" }
+}
+
+// Funciones de utilidad para fechas en KMP
+private fun getCurrentDate(): String {
+    val now = Clock.System.now()
+    val date = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
+    return "${date.dayOfMonth.toString().padStart(2, '0')}-${date.monthNumber.toString().padStart(2, '0')}-${date.year}"
+}
+
+private fun formatTimestamp(timestamp: Long): String {
+    val instant = Instant.fromEpochMilliseconds(timestamp)
+    val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+    return "${date.dayOfMonth.toString().padStart(2, '0')}/${date.monthNumber.toString().padStart(2, '0')}/${date.year}"
 }
