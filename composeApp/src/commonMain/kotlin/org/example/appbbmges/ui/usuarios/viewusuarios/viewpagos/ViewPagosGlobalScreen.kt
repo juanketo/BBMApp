@@ -23,215 +23,6 @@ import org.example.appbbmges.navigation.SimpleNavController
 import org.example.appbbmges.ui.usuarios.viewusuarios.AppColors
 import kotlin.math.roundToInt
 
-// Clases de datos necesarias para el cálculo de pagos
-data class MembershipInfo(
-    val id: Long,
-    val name: String,
-    val monthsPaid: Long,
-    val monthsSaved: Double,
-    val totalPrice: Double
-)
-
-data class PaymentResult(
-    val baseAmount: Double,
-    val discount: Double,
-    val finalAmount: Double,
-    val description: String,
-    val breakdown: String
-)
-
-sealed class PaymentSelection {
-    data class Disciplines(val numClasses: Int, val numStudents: Int) : PaymentSelection()
-    data class Membership(val membershipId: Long) : PaymentSelection()
-    data class SiblingsWithMixedDisciplines(val students: List<StudentPaymentInfo>) : PaymentSelection()
-}
-
-data class StudentPaymentInfo(
-    val studentId: Long,
-    val numClasses: Int
-)
-
-enum class PaymentTiming {
-    NORMAL,
-    EARLY,
-    LATE
-}
-
-// Repositorio de pagos
-class DatabasePaymentRepository(private val repository: Repository) {
-    fun getBasePrice(): Double {
-        // Obtener el precio base desde la base de datos
-        val preciosBase = repository.getAllPreciosBase()
-        return preciosBase.firstOrNull()?.precio ?: 400.0 // Precio por defecto
-    }
-
-    fun getMembership(id: Long): MembershipInfo? {
-        val membership = repository.getMembershipById(id)
-        return membership?.let {
-            MembershipInfo(
-                id = it.id,
-                name = it.name,
-                monthsPaid = it.months_paid,
-                monthsSaved = it.months_saved,
-                totalPrice = getBasePrice() * it.months_paid - (getBasePrice() * it.months_saved)
-            )
-        }
-    }
-
-    fun getAllMemberships(): List<MembershipInfo> {
-        return repository.getAllMemberships().map { membership ->
-            MembershipInfo(
-                id = membership.id,
-                name = membership.name,
-                monthsPaid = membership.months_paid,
-                monthsSaved = membership.months_saved,
-                totalPrice = getBasePrice() * membership.months_paid - (getBasePrice() * membership.months_saved)
-            )
-        }
-    }
-}
-
-// Calculadora de pagos
-class PaymentCalculator(private val paymentRepository: DatabasePaymentRepository) {
-    private val basePrice = paymentRepository.getBasePrice()
-    private val enrollmentFee = 800.0
-
-    fun getAvailableMemberships(): List<MembershipInfo> {
-        return paymentRepository.getAllMemberships()
-    }
-
-    fun calculatePayment(
-        selection: PaymentSelection,
-        includeEnrollment: Boolean = false,
-        timing: PaymentTiming = PaymentTiming.NORMAL
-    ): PaymentResult {
-        return when (selection) {
-            is PaymentSelection.Disciplines -> calculateDisciplinesPayment(selection, includeEnrollment, timing)
-            is PaymentSelection.Membership -> calculateMembershipPayment(selection, includeEnrollment, timing)
-            is PaymentSelection.SiblingsWithMixedDisciplines -> calculateSiblingsPayment(selection, includeEnrollment, timing)
-        }
-    }
-
-    private fun calculateDisciplinesPayment(
-        selection: PaymentSelection.Disciplines,
-        includeEnrollment: Boolean,
-        timing: PaymentTiming
-    ): PaymentResult {
-        val baseAmount = basePrice * selection.numClasses
-        val timingDiscount = when (timing) {
-            PaymentTiming.EARLY -> baseAmount * 0.10
-            PaymentTiming.LATE -> 0.0
-            PaymentTiming.NORMAL -> 0.0
-        }
-
-        val enrollmentAmount = if (includeEnrollment) enrollmentFee else 0.0
-        val finalAmount = baseAmount - timingDiscount + enrollmentAmount
-
-        val breakdown = buildString {
-            appendLine("Precio base por clase: \$${basePrice.toInt()}")
-            appendLine("Número de clases: ${selection.numClasses}")
-            appendLine("Subtotal: \$${baseAmount.toInt()}")
-            if (timingDiscount > 0) {
-                appendLine("Descuento por pago anticipado: -\$${timingDiscount.toInt()}")
-            }
-            if (includeEnrollment) {
-                appendLine("Inscripción: +\$${enrollmentFee.toInt()}")
-            }
-        }
-
-        return PaymentResult(
-            baseAmount = baseAmount,
-            discount = timingDiscount,
-            finalAmount = finalAmount,
-            description = "Pago por ${selection.numClasses} clase(s)",
-            breakdown = breakdown
-        )
-    }
-
-    private fun calculateMembershipPayment(
-        selection: PaymentSelection.Membership,
-        includeEnrollment: Boolean,
-        timing: PaymentTiming
-    ): PaymentResult {
-        val membership = paymentRepository.getMembership(selection.membershipId)
-            ?: return PaymentResult(0.0, 0.0, 0.0, "Membresía no encontrada", "")
-
-        val baseAmount = membership.totalPrice
-        val timingDiscount = when (timing) {
-            PaymentTiming.EARLY -> baseAmount * 0.05
-            PaymentTiming.LATE -> 0.0
-            PaymentTiming.NORMAL -> 0.0
-        }
-
-        val enrollmentAmount = if (includeEnrollment) enrollmentFee else 0.0
-        val finalAmount = baseAmount - timingDiscount + enrollmentAmount
-
-        val breakdown = buildString {
-            appendLine("Membresía: ${membership.name}")
-            appendLine("Meses incluidos: ${membership.monthsPaid}")
-            appendLine("Ahorro mensual: \$${(basePrice * membership.monthsSaved).toInt()}")
-            appendLine("Precio total: \$${baseAmount.toInt()}")
-            if (timingDiscount > 0) {
-                appendLine("Descuento por pago anticipado: -\$${timingDiscount.toInt()}")
-            }
-            if (includeEnrollment) {
-                appendLine("Inscripción: +\$${enrollmentFee.toInt()}")
-            }
-        }
-
-        return PaymentResult(
-            baseAmount = baseAmount,
-            discount = timingDiscount,
-            finalAmount = finalAmount,
-            description = "Membresía ${membership.name}",
-            breakdown = breakdown
-        )
-    }
-
-    private fun calculateSiblingsPayment(
-        selection: PaymentSelection.SiblingsWithMixedDisciplines,
-        includeEnrollment: Boolean,
-        timing: PaymentTiming
-    ): PaymentResult {
-        val totalClasses = selection.students.sumOf { it.numClasses }
-        val baseAmount = basePrice * totalClasses
-        val siblingDiscount = baseAmount * 0.15 // 15% descuento por hermanos
-        val timingDiscount = when (timing) {
-            PaymentTiming.EARLY -> baseAmount * 0.10
-            PaymentTiming.LATE -> 0.0
-            PaymentTiming.NORMAL -> 0.0
-        }
-
-        val totalDiscount = siblingDiscount + timingDiscount
-        val enrollmentAmount = if (includeEnrollment) enrollmentFee else 0.0
-        val finalAmount = baseAmount - totalDiscount + enrollmentAmount
-
-        val breakdown = buildString {
-            appendLine("Pago para hermanos:")
-            selection.students.forEach { student ->
-                appendLine("  Estudiante ${student.studentId}: ${student.numClasses} clase(s)")
-            }
-            appendLine("Total de clases: $totalClasses")
-            appendLine("Subtotal: \${baseAmount.toInt()}")
-            appendLine("Descuento por hermanos (15%): -\${siblingDiscount.toInt()}")
-            if (timingDiscount > 0) {
-                appendLine("Descuento por pago anticipado: -\${timingDiscount.toInt()}")
-            }
-            if (includeEnrollment) {
-                appendLine("Inscripción: +\${enrollmentFee.toInt()}")
-            }
-        }
-
-        return PaymentResult(
-            baseAmount = baseAmount,
-            discount = totalDiscount,
-            finalAmount = finalAmount,
-            description = "Pago para ${selection.students.size} hermanos",
-            breakdown = breakdown
-        )
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ViewPagosGlobalScreen(
@@ -239,6 +30,7 @@ fun ViewPagosGlobalScreen(
     repository: Repository,
     navController: SimpleNavController
 ) {
+    // Usar las clases corregidas del primer archivo
     val paymentRepository = remember { DatabasePaymentRepository(repository) }
     val paymentCalculator = remember { PaymentCalculator(paymentRepository) }
 
@@ -383,7 +175,7 @@ fun ViewPagosGlobalScreen(
                                             onClick = { selectedMembershipId = membership.id }
                                         )
                                         Text(
-                                            text = "${membership.name} - \${membership.totalPrice.toInt()}",
+                                            text = "${membership.name} - \$${membership.totalPrice.toInt()}",
                                             modifier = Modifier.clickable { selectedMembershipId = membership.id }
                                         )
                                     }
@@ -420,7 +212,7 @@ fun ViewPagosGlobalScreen(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "Total Final: \${result.finalAmount.roundToInt()}",
+                                    text = "Total Final: \$${result.finalAmount.roundToInt()}",
                                     fontWeight = FontWeight.ExtraBold,
                                     style = MaterialTheme.typography.headlineSmall,
                                     color = AppColors.Primary

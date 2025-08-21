@@ -125,12 +125,13 @@ class PaymentCalculator(
         val memberships = repository.getAllMemberships()
 
         return memberships.map { membership ->
-            val totalPrice = (membership.months_paid * basePrice) - (membership.months_saved * basePrice)
+            // CORRECCIÓN: Usar nombres correctos de propiedades
+            val totalPrice = (membership.monthsPaid * basePrice) - (membership.monthsSaved * basePrice)
             MembershipInfo(
                 id = membership.id,
                 name = membership.name,
-                monthsPaid = membership.months_paid,
-                monthsSaved = membership.months_saved,
+                monthsPaid = membership.monthsPaid,
+                monthsSaved = membership.monthsSaved,
                 totalPrice = totalPrice
             )
         }
@@ -287,15 +288,16 @@ class PaymentCalculator(
         val membership = repository.getMembershipById(selection.membershipId)
             ?: throw IllegalArgumentException("No se encontró membresía con ID: ${selection.membershipId}")
 
-        val baseAmount = membership.months_paid * basePrice
-        val discount = membership.months_saved * basePrice
+        // CORRECCIÓN: Usar nombres correctos de propiedades
+        val baseAmount = membership.monthsPaid * basePrice
+        val discount = membership.monthsSaved * basePrice
         val finalAmount = baseAmount - discount
 
         val membershipInfo = MembershipInfo(
             id = membership.id,
             name = membership.name,
-            monthsPaid = membership.months_paid,
-            monthsSaved = membership.months_saved,
+            monthsPaid = membership.monthsPaid,
+            monthsSaved = membership.monthsSaved,
             totalPrice = finalAmount
         )
 
@@ -305,8 +307,8 @@ class PaymentCalculator(
             finalAmount = finalAmount,
             description = "Membresía ${membership.name}",
             breakdown = buildString {
-                append("Precio sin membresía (${membership.months_paid} meses): \$${baseAmount.toInt()}")
-                append("\nAhorro (${membership.months_saved} meses): -\$${discount.toInt()}")
+                append("Precio sin membresía (${membership.monthsPaid} meses): \$${baseAmount.toInt()}")
+                append("\nAhorro (${membership.monthsSaved} meses): -\$${discount.toInt()}")
                 append("\nTotal membresía: \$${finalAmount.toInt()}")
             },
             membershipInfo = membershipInfo

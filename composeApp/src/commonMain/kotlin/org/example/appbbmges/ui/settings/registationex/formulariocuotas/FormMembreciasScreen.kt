@@ -29,9 +29,6 @@ import appbbmges.composeapp.generated.resources.Res
 import appbbmges.composeapp.generated.resources.logoSystem
 import org.jetbrains.compose.resources.painterResource
 
-// -----------------------------------------------
-// Formulario para Crear/Editar Membresía
-// -----------------------------------------------
 enum class MembresiaFormStep { FORM, CONFIRMATION }
 
 sealed class MembresiaFormState {
@@ -111,14 +108,14 @@ fun FormMembresiasScreen(
                             repository.updateMembership(
                                 id = id,
                                 name = name.trim(),
-                                months_paid = monthsPaid.toLong(),
-                                months_saved = monthsSaved.toDouble()
+                                monthsPaid = monthsPaid.toLong(),
+                                monthsSaved = monthsSaved.toDouble()
                             )
                         } else {
                             repository.insertMembership(
                                 name = name.trim(),
-                                months_paid = monthsPaid.toLong(),
-                                months_saved = monthsSaved.toDouble()
+                                monthsPaid = monthsPaid.toLong(),
+                                monthsSaved = monthsSaved.toDouble()
                             )
                         }
                         formState = MembresiaFormState.Success
