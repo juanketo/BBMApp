@@ -3,6 +3,7 @@ package org.example.appbbmges.ui.usuarios.viewusuarios.viewpagos
 import org.example.appbbmges.data.Repository
 import org.example.appbbmges.PrecioBaseEntity
 import org.example.appbbmges.MembershipEntity
+import org.example.appbbmges.InscriptionEntity
 
 // Sealed classes para definir los tipos de selección
 sealed class PaymentSelection {
@@ -31,23 +32,50 @@ enum class PaymentTiming(val multiplier: Double, val description: String) {
     MONTH_END(1.0, "Pago después del 20 (ajuste por clases restantes)")
 }
 
-// Data class para el resultado del cálculo
-data class PaymentResult(
-    val baseAmount: Double,
-    val discount: Double,
-    val finalAmount: Double,
-    val description: String,
-    val breakdown: String,
-    val membershipInfo: MembershipInfo? = null
-)
-
 // Data class para información de membresía
 data class MembershipInfo(
     val id: Long,
     val name: String,
     val monthsPaid: Long,
     val monthsSaved: Double,
-    val totalPrice: Double
+    val totalPrice: Double,
+    val membershipType: String // "BRONCE", "PLATA", "ORO", "PLATINO"
+)
+
+// Data class para información de inscripción
+data class InscriptionInfo(
+    val id: Long,
+    val precio: Double
+)
+
+// Data class para el resultado del cálculo (COMPLETO Y EXPANDIDO)
+data class PaymentResult(
+    val baseAmount: Double,
+    val discount: Double,
+    val finalAmount: Double,
+    val description: String,
+    val breakdown: String,
+    val membershipInfo: MembershipInfo? = null,
+
+    // NUEVOS CAMPOS ESPECÍFICOS PARA BABY BALLET:
+    val membershipType: String? = null,          // "BRONCE", "PLATA", "ORO", "PLATINO"
+    val discountType: String? = null,            // "50% 2da disciplina", "10% hermanos", "15% hermanos"
+    val paymentTiming: PaymentTiming,            // NORMAL, LATE_ACTIVE, PROPORTIONAL_NEW, MONTH_END
+    val includesEnrollment: Boolean,             // Si incluye inscripción
+    val enrollmentFee: Double,                   // Precio de inscripción desde BD
+    val taxBase: Double,                         // Base imponible (para IVA)
+    val taxAmount: Double,                       // IVA (16%)
+    val taxPercentage: Double = 16.0,            // 16% fijo
+    val subtotalBeforeTax: Double,               // Subtotal sin IVA
+    val disciplinesCount: Int,                   // 1, 2, 3, 4 disciplinas
+    val siblingsCount: Int,                      // 1, 2, 3 hermanos
+    val frequency: String,                       // "2 veces/semana", "4 veces/semana", etc.
+    val duration: String = "Mes",                // "Mes" (por defecto)
+    val selectedMonths: List<String> = emptyList(), // ["oct. 2025"]
+    val paymentMethod: String = "Efectivo",      // "Efectivo", "Transferencia", "Tarjeta"
+    val isMembership: Boolean = false,           // Si es pago de membresía
+    val monthsPaid: Int = 1,                     // Cantidad de meses pagados
+    val monthsSaved: Int = 0                     // Meses ahorrados con membresía
 )
 
 // Interface para el repository (para hacer la calculadora testeable)
@@ -56,6 +84,8 @@ interface PaymentRepository {
     fun getPrecioBaseById(id: Long): PrecioBaseEntity?
     fun getAllMemberships(): List<MembershipEntity>
     fun getMembershipById(id: Long): MembershipEntity?
+    fun getAllInscriptions(): List<InscriptionEntity>
+    fun getInscriptionById(id: Long): InscriptionEntity?
 }
 
 class PaymentCalculator(
@@ -68,16 +98,22 @@ class PaymentCalculator(
     fun calculatePayment(
         selection: PaymentSelection,
         precioBaseId: Long = 1L, // ID del precio base a usar
+        inscriptionId: Long = 1L, // ID de la inscripción a usar
         timing: PaymentTiming = PaymentTiming.NORMAL,
-        enrollmentFee: Double = 800.0,
-        includeEnrollment: Boolean = false
+        includeEnrollment: Boolean = false,
+        paymentMethod: String = "Efectivo"
     ): PaymentResult {
 
         // Obtener precio base de la base de datos
         val precioBase = repository.getPrecioBaseById(precioBaseId)
             ?: throw IllegalArgumentException("No se encontró precio base con ID: $precioBaseId")
 
+        // Obtener precio de inscripción de la base de datos
+        val inscription = repository.getInscriptionById(inscriptionId)
+            ?: throw IllegalArgumentException("No se encontró inscripción con ID: $inscriptionId")
+
         val basePrice = precioBase.precio
+        val enrollmentFee = inscription.precio
 
         val baseResult = when (selection) {
             is PaymentSelection.Disciplines -> calculateDisciplines(selection, basePrice)
@@ -99,18 +135,48 @@ class PaymentCalculator(
             adjustedAmount
         }
 
+        // Calcular impuestos (IVA 16%)
+        val (taxBase, taxAmount) = calculateTaxes(finalAmount)
+
         val enrollmentText = if (includeEnrollment) " + Inscripción (\$${enrollmentFee.toInt()})" else ""
         val timingText = if (timing != PaymentTiming.NORMAL && selection !is PaymentSelection.Membership) {
             " [${timing.description}]"
         } else ""
 
-        return baseResult.copy(
+        // Determinar frecuencia basada en disciplinas
+        val frequency = when (selection) {
+            is PaymentSelection.Disciplines -> "${selection.count * 2} veces/semana"
+            is PaymentSelection.Membership -> "Membresía ${baseResult.membershipInfo?.membershipType ?: ""}"
+            else -> "Personalizado"
+        }
+
+        return PaymentResult(
+            baseAmount = baseResult.baseAmount,
+            discount = baseResult.discount,
             finalAmount = finalAmount,
             description = baseResult.description + timingText + enrollmentText,
             breakdown = baseResult.breakdown +
                     (if (timing != PaymentTiming.NORMAL && selection !is PaymentSelection.Membership)
                         "\nAjuste por timing: ${timing.description}" else "") +
-                    (if (includeEnrollment) "\nInscripción: \$${enrollmentFee.toInt()}" else "")
+                    (if (includeEnrollment) "\nInscripción: \$${enrollmentFee.toInt()}" else ""),
+            membershipInfo = baseResult.membershipInfo,
+
+            // NUEVOS CAMPOS:
+            membershipType = baseResult.membershipInfo?.membershipType,
+            discountType = baseResult.discountType,
+            paymentTiming = timing,
+            includesEnrollment = includeEnrollment,
+            enrollmentFee = enrollmentFee,
+            taxBase = taxBase,
+            taxAmount = taxAmount,
+            subtotalBeforeTax = finalAmount - taxAmount,
+            disciplinesCount = if (selection is PaymentSelection.Disciplines) selection.count else 0,
+            siblingsCount = if (selection is PaymentSelection.Disciplines) selection.siblings else 1,
+            frequency = frequency,
+            paymentMethod = paymentMethod,
+            isMembership = selection is PaymentSelection.Membership,
+            monthsPaid = baseResult.membershipInfo?.monthsPaid?.toInt() ?: 1,
+            monthsSaved = baseResult.membershipInfo?.monthsSaved?.toInt() ?: 0
         )
     }
 
@@ -125,14 +191,24 @@ class PaymentCalculator(
         val memberships = repository.getAllMemberships()
 
         return memberships.map { membership ->
-            // CORRECCIÓN: Usar nombres correctos de propiedades
-            val totalPrice = (membership.monthsPaid * basePrice) - (membership.monthsSaved * basePrice)
+            val totalPrice = (membership.months_paid * basePrice) - (membership.months_saved * basePrice)
+
+            // Determinar tipo de membresía basado en meses pagados
+            val membershipType = when (membership.months_paid) {
+                4L -> "BRONCE"
+                6L -> "PLATA"
+                10L -> "ORO"
+                12L -> "PLATINO"
+                else -> "PERSONALIZADA"
+            }
+
             MembershipInfo(
                 id = membership.id,
                 name = membership.name,
-                monthsPaid = membership.monthsPaid,
-                monthsSaved = membership.monthsSaved,
-                totalPrice = totalPrice
+                monthsPaid = membership.months_paid,
+                monthsSaved = membership.months_saved,
+                totalPrice = totalPrice,
+                membershipType = membershipType
             )
         }
     }
@@ -144,6 +220,28 @@ class PaymentCalculator(
         val precioBase = repository.getPrecioBaseById(precioBaseId)
             ?: throw IllegalArgumentException("No se encontró precio base con ID: $precioBaseId")
         return precioBase.precio
+    }
+
+    /**
+     * Obtiene el precio de inscripción actual
+     */
+    fun getCurrentInscriptionPrice(inscriptionId: Long = 1L): Double {
+        val inscription = repository.getInscriptionById(inscriptionId)
+            ?: throw IllegalArgumentException("No se encontró inscripción con ID: $inscriptionId")
+        return inscription.precio
+    }
+
+    /**
+     * Obtiene todas las inscripciones disponibles
+     */
+    fun getAvailableInscriptions(): List<InscriptionInfo> {
+        val inscriptions = repository.getAllInscriptions()
+        return inscriptions.map { inscription ->
+            InscriptionInfo(
+                id = inscription.id,
+                precio = inscription.precio
+            )
+        }
     }
 
     /**
@@ -171,19 +269,38 @@ class PaymentCalculator(
                     discount = 0.0,
                     finalAmount = basePrice,
                     description = "1 disciplina",
-                    breakdown = "Precio base: \$${basePrice.toInt()}"
+                    breakdown = "Precio base: \$${basePrice.toInt()}",
+                    discountType = null,
+                    paymentTiming = PaymentTiming.NORMAL,
+                    includesEnrollment = false,
+                    enrollmentFee = 0.0, // Se establecerá en el método principal
+                    taxBase = calculateTaxes(basePrice).first,
+                    taxAmount = calculateTaxes(basePrice).second,
+                    subtotalBeforeTax = basePrice,
+                    disciplinesCount = 1,
+                    siblingsCount = 1,
+                    frequency = "2 veces/semana"
                 )
             }
 
             else -> {
                 // Caso inválido: hermanos con múltiples disciplinas cada uno
-                // Esto se debería manejar con SiblingsWithMixedDisciplines
                 PaymentResult(
                     baseAmount = 0.0,
                     discount = 0.0,
                     finalAmount = 0.0,
                     description = "Configuración inválida",
-                    breakdown = "Use SiblingsWithMixedDisciplines para este caso"
+                    breakdown = "Use SiblingsWithMixedDisciplines para este caso",
+                    discountType = null,
+                    paymentTiming = PaymentTiming.NORMAL,
+                    includesEnrollment = false,
+                    enrollmentFee = 0.0,
+                    taxBase = 0.0,
+                    taxAmount = 0.0,
+                    subtotalBeforeTax = 0.0,
+                    disciplinesCount = 0,
+                    siblingsCount = 0,
+                    frequency = ""
                 )
             }
         }
@@ -202,6 +319,12 @@ class PaymentCalculator(
         }
 
         val finalAmount = baseAmount - discount
+        val discountType = when (disciplineCount) {
+            2 -> "50% 2da disciplina"
+            3 -> "50% 2da + 25% 3ra disciplina"
+            4 -> "50% 2da + 25% 3ra + 25% 4ta disciplina"
+            else -> null
+        }
 
         return PaymentResult(
             baseAmount = baseAmount,
@@ -219,7 +342,17 @@ class PaymentCalculator(
                         .append("\nDescuento 4ta disciplina (25%): -\$${(basePrice * 0.25).toInt()}")
                 }
                 append("\nTotal con descuento: \$${finalAmount.toInt()}")
-            }
+            },
+            discountType = discountType,
+            paymentTiming = PaymentTiming.NORMAL,
+            includesEnrollment = false,
+            enrollmentFee = 0.0,
+            taxBase = calculateTaxes(finalAmount).first,
+            taxAmount = calculateTaxes(finalAmount).second,
+            subtotalBeforeTax = finalAmount,
+            disciplinesCount = disciplineCount,
+            siblingsCount = 1,
+            frequency = "${disciplineCount * 2} veces/semana"
         )
     }
 
@@ -236,6 +369,11 @@ class PaymentCalculator(
 
         val discount = baseAmount * discountPercentage
         val finalAmount = baseAmount - discount
+        val discountType = when (siblingsCount) {
+            2 -> "10% descuento hermanos"
+            3 -> "15% descuento hermanos"
+            else -> null
+        }
 
         return PaymentResult(
             baseAmount = baseAmount,
@@ -248,7 +386,17 @@ class PaymentCalculator(
                     append("\nDescuento hermanos (${(discountPercentage * 100).toInt()}%): -\$${discount.toInt()}")
                 }
                 append("\nTotal: \$${finalAmount.toInt()}")
-            }
+            },
+            discountType = discountType,
+            paymentTiming = PaymentTiming.NORMAL,
+            includesEnrollment = false,
+            enrollmentFee = 0.0,
+            taxBase = calculateTaxes(finalAmount).first,
+            taxAmount = calculateTaxes(finalAmount).second,
+            subtotalBeforeTax = finalAmount,
+            disciplinesCount = 1,
+            siblingsCount = siblingsCount,
+            frequency = "2 veces/semana"
         )
     }
 
@@ -277,7 +425,17 @@ class PaymentCalculator(
             discount = 0.0, // No hay descuento global cuando hay disciplinas mixtas
             finalAmount = totalAmount,
             description = "Hermanos con disciplinas mixtas",
-            breakdown = breakdown.toString() + "Total: \$${totalAmount.toInt()}"
+            breakdown = breakdown.toString() + "Total: \$${totalAmount.toInt()}",
+            discountType = null,
+            paymentTiming = PaymentTiming.NORMAL,
+            includesEnrollment = false,
+            enrollmentFee = 0.0,
+            taxBase = calculateTaxes(totalAmount).first,
+            taxAmount = calculateTaxes(totalAmount).second,
+            subtotalBeforeTax = totalAmount,
+            disciplinesCount = disciplinesPerSibling.sum(),
+            siblingsCount = disciplinesPerSibling.size,
+            frequency = "Variable"
         )
     }
 
@@ -288,17 +446,26 @@ class PaymentCalculator(
         val membership = repository.getMembershipById(selection.membershipId)
             ?: throw IllegalArgumentException("No se encontró membresía con ID: ${selection.membershipId}")
 
-        // CORRECCIÓN: Usar nombres correctos de propiedades
-        val baseAmount = membership.monthsPaid * basePrice
-        val discount = membership.monthsSaved * basePrice
+        val baseAmount = membership.months_paid * basePrice
+        val discount = membership.months_saved * basePrice
         val finalAmount = baseAmount - discount
+
+        // Determinar tipo de membresía
+        val membershipType = when (membership.months_paid) {
+            4L -> "BRONCE"
+            6L -> "PLATA"
+            10L -> "ORO"
+            12L -> "PLATINO"
+            else -> "PERSONALIZADA"
+        }
 
         val membershipInfo = MembershipInfo(
             id = membership.id,
             name = membership.name,
-            monthsPaid = membership.monthsPaid,
-            monthsSaved = membership.monthsSaved,
-            totalPrice = finalAmount
+            monthsPaid = membership.months_paid,
+            monthsSaved = membership.months_saved,
+            totalPrice = finalAmount,
+            membershipType = membershipType
         )
 
         return PaymentResult(
@@ -307,12 +474,36 @@ class PaymentCalculator(
             finalAmount = finalAmount,
             description = "Membresía ${membership.name}",
             breakdown = buildString {
-                append("Precio sin membresía (${membership.monthsPaid} meses): \$${baseAmount.toInt()}")
-                append("\nAhorro (${membership.monthsSaved} meses): -\$${discount.toInt()}")
+                append("Precio sin membresía (${membership.months_paid} meses): \$${baseAmount.toInt()}")
+                append("\nAhorro (${membership.months_saved} meses): -\$${discount.toInt()}")
                 append("\nTotal membresía: \$${finalAmount.toInt()}")
             },
-            membershipInfo = membershipInfo
+            membershipInfo = membershipInfo,
+            membershipType = membershipType,
+            discountType = "Membresía $membershipType",
+            paymentTiming = PaymentTiming.NORMAL,
+            includesEnrollment = false,
+            enrollmentFee = 0.0,
+            taxBase = calculateTaxes(finalAmount).first,
+            taxAmount = calculateTaxes(finalAmount).second,
+            subtotalBeforeTax = finalAmount,
+            disciplinesCount = 0,
+            siblingsCount = 1,
+            frequency = "Membresía",
+            isMembership = true,
+            monthsPaid = membership.months_paid.toInt(),
+            monthsSaved = membership.months_saved.toInt()
         )
+    }
+
+    /**
+     * Calcula impuestos (IVA 16%)
+     */
+    private fun calculateTaxes(amount: Double): Pair<Double, Double> {
+        val taxPercentage = 0.16 // 16% IVA
+        val taxBase = amount / (1 + taxPercentage)
+        val taxAmount = amount - taxBase
+        return Pair(taxBase, taxAmount)
     }
 
     private fun applyTimingAdjustment(amount: Double, timing: PaymentTiming): Double {
@@ -326,11 +517,13 @@ class PaymentCalculator(
         disciplinesCount: Int,
         siblingsCount: Int = 1,
         precioBaseId: Long = 1L,
+        inscriptionId: Long = 1L,
         timing: PaymentTiming = PaymentTiming.NORMAL,
-        includeEnrollment: Boolean = false
+        includeEnrollment: Boolean = false,
+        paymentMethod: String = "Efectivo"
     ): PaymentResult {
         val selection = PaymentSelection.Disciplines(disciplinesCount, siblingsCount)
-        return calculatePayment(selection, precioBaseId, timing, includeEnrollment = includeEnrollment)
+        return calculatePayment(selection, precioBaseId, inscriptionId, timing, includeEnrollment, paymentMethod)
     }
 
     /**
@@ -339,10 +532,12 @@ class PaymentCalculator(
     fun calculateMembershipQuick(
         membershipId: Long,
         precioBaseId: Long = 1L,
-        includeEnrollment: Boolean = false
+        inscriptionId: Long = 1L,
+        includeEnrollment: Boolean = false,
+        paymentMethod: String = "Efectivo"
     ): PaymentResult {
         val selection = PaymentSelection.Membership(membershipId)
-        return calculatePayment(selection, precioBaseId, includeEnrollment = includeEnrollment)
+        return calculatePayment(selection, precioBaseId, inscriptionId, includeEnrollment = includeEnrollment, paymentMethod = paymentMethod)
     }
 }
 
@@ -363,30 +558,12 @@ class DatabasePaymentRepository(private val repository: Repository) : PaymentRep
     override fun getMembershipById(id: Long): MembershipEntity? {
         return repository.getMembershipById(id)
     }
-}
 
-// Ejemplo de uso simplificado
-fun exampleUsage(repository: Repository) {
-    val paymentRepository = DatabasePaymentRepository(repository)
-    val calculator = PaymentCalculator(paymentRepository)
-
-    // Obtener membresías disponibles con precios calculados
-    val memberships = calculator.getAvailableMemberships(precioBaseId = 1L)
-    memberships.forEach { membership ->
-        println("${membership.name}: \$${membership.totalPrice.toInt()} (Paga ${membership.monthsPaid} meses, ahorra ${membership.monthsSaved} meses)")
+    override fun getAllInscriptions(): List<InscriptionEntity> {
+        return repository.getAllInscriptions()
     }
 
-    // Calcular precio para 2 disciplinas
-    val result2Disciplines = calculator.calculateQuickSelection(
-        disciplinesCount = 2,
-        precioBaseId = 1L
-    )
-    println("\n${result2Disciplines.description}: \$${result2Disciplines.finalAmount.toInt()}")
-
-    // Calcular precio para membresía específica (usando ID de la BD)
-    val membershipResult = calculator.calculateMembershipQuick(
-        membershipId = 1L, // ID de la membresía en tu BD
-        precioBaseId = 1L
-    )
-    println("\n${membershipResult.description}: \$${membershipResult.finalAmount.toInt()}")
+    override fun getInscriptionById(id: Long): InscriptionEntity? {
+        return repository.getInscriptionById(id)
+    }
 }

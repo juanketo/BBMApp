@@ -15,7 +15,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,6 +30,7 @@ import org.example.appbbmges.StudentAuthorizedAdultEntity
 import org.example.appbbmges.PaymentEntity
 import kotlinx.datetime.*
 import org.example.appbbmges.navigation.SimpleNavController
+import org.example.appbbmges.ui.usuarios.viewusuarios.viewpagos.ViewPagosGlobalScreen
 
 object AppColors {
     val Primary = Color(0xFF00B4D8)
@@ -96,10 +96,10 @@ fun ViewAlumnoScreen(
                         )
                     }
                     "financiera" -> {
-                        StudentFinancialDetailScreen(
-                            payments = payments,
-                            onDismiss = { selectedSection = "main" },
-                            onNewPaymentClick = { showPaymentForm = true }
+                        ViewPagosGlobalScreen(
+                            studentId = studentId,
+                            repository = repository,
+                            navController = navController
                         )
                     }
                     "calendario" -> {
@@ -255,44 +255,6 @@ fun StudentPersonalDetailScreen(
             ) {
                 StudentPersonalSection(student = student, adults = adults)
             }
-        }
-    }
-}
-
-@Composable
-fun StudentFinancialDetailScreen(
-    payments: List<PaymentEntity>,
-    onDismiss: () -> Unit,
-    onNewPaymentClick: () -> Unit
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-
-        DetailScreenHeader(
-            title = "Información Financiera",
-            onDismiss = onDismiss,
-            action = {
-                Button(
-                    onClick = onNewPaymentClick,
-                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.Primary)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Nuevo Pago")
-                }
-            }
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            StudentFinancialSection(
-                payments = payments,
-                onNewPaymentClick = onNewPaymentClick
-            )
         }
     }
 }

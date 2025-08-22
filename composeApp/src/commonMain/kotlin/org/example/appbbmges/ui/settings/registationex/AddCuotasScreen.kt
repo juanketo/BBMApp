@@ -17,10 +17,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.example.appbbmges.InscriptionEntity
 import org.example.appbbmges.MembershipEntity
 import org.example.appbbmges.PrecioBaseEntity
 import org.example.appbbmges.data.Repository
 import org.example.appbbmges.ui.usuarios.AppColors
+import org.example.appbbmges.ui.settings.registationex.formulariocuotas.FormInscripcionScreen
 import org.example.appbbmges.ui.settings.registationex.formulariocuotas.FormMembresiasScreen
 import org.example.appbbmges.ui.settings.registationex.formulariocuotas.FormPrecioBaseScreen
 
@@ -38,6 +40,7 @@ fun AddCuotasScreen(
 
     var preciosBase by remember { mutableStateOf<List<PrecioBaseEntity>>(emptyList()) }
     var memberships by remember { mutableStateOf<List<MembershipEntity>>(emptyList()) }
+    var inscripciones by remember { mutableStateOf<List<InscriptionEntity>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
     val coroutineScope = rememberCoroutineScope()
@@ -47,6 +50,7 @@ fun AddCuotasScreen(
             try {
                 preciosBase = repository.getAllPreciosBase()
                 memberships = repository.getAllMemberships()
+                inscripciones = repository.getAllInscriptions()
             } catch (e: Exception) {
                 println("Error recargando datos: ${e.message}")
             } finally {
@@ -89,6 +93,17 @@ fun AddCuotasScreen(
                             editingMembership = editingEntity as? MembershipEntity
                         )
                     }
+                    "inscripcion" -> {
+                        FormInscripcionScreen(
+                            onDismiss = {
+                                showFormScreen = null
+                                editingEntity = null
+                                reloadData()
+                            },
+                            repository = repository,
+                            editingInscripcion = editingEntity as? InscriptionEntity
+                        )
+                    }
                 }
             }
             else -> {
@@ -106,7 +121,7 @@ fun AddCuotasScreen(
                                 color = AppColors.TextColor
                             )
                             Text(
-                                text = "Precios base y planes de membresía",
+                                text = "Precios base, inscripciones y planes de membresía",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = AppColors.TextColor.copy(alpha = 0.7f)
                             )
@@ -123,7 +138,12 @@ fun AddCuotasScreen(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     TabRow(
-                        selectedTabIndex = if (selectedTab == "Precios Base") 0 else 1,
+                        selectedTabIndex = when (selectedTab) {
+                            "Precios Base" -> 0
+                            "Inscripciones" -> 1
+                            "Membresías" -> 2
+                            else -> 0
+                        },
                         containerColor = Color.White,
                         contentColor = AppColors.Primary
                     ) {
@@ -131,6 +151,11 @@ fun AddCuotasScreen(
                             selected = selectedTab == "Precios Base",
                             onClick = { selectedTab = "Precios Base" },
                             text = { Text("Precios Base") }
+                        )
+                        Tab(
+                            selected = selectedTab == "Inscripciones",
+                            onClick = { selectedTab = "Inscripciones" },
+                            text = { Text("Inscripciones") }
                         )
                         Tab(
                             selected = selectedTab == "Membresías",
@@ -156,6 +181,19 @@ fun AddCuotasScreen(
                                     },
                                     onDelete = {
                                         repository.deletePrecioBase(it.id)
+                                        reloadData()
+                                    }
+                                )
+                            }
+                            "Inscripciones" -> {
+                                InscripcionesList(
+                                    inscripciones = inscripciones,
+                                    onEdit = {
+                                        editingEntity = it
+                                        showFormScreen = "inscripcion"
+                                    },
+                                    onDelete = {
+                                        repository.deleteInscription(it.id)
                                         reloadData()
                                     }
                                 )
@@ -197,6 +235,14 @@ fun AddCuotasScreen(
                             onClick = {
                                 showAddMenu = false
                                 showFormScreen = "precio"
+                                editingEntity = null
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Agregar inscripción") },
+                            onClick = {
+                                showAddMenu = false
+                                showFormScreen = "inscripcion"
                                 editingEntity = null
                             }
                         )
@@ -275,6 +321,74 @@ private fun PreciosBaseList(
                         }
                     }
                     if (cuota != precios.last()) {
+                        Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InscripcionesList(
+    inscripciones: List<InscriptionEntity>,
+    onEdit: (InscriptionEntity) -> Unit,
+    onDelete: (InscriptionEntity) -> Unit
+) {
+    if (inscripciones.isEmpty()) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(2.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(48.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("No hay inscripciones registradas", fontWeight = FontWeight.Bold)
+                Text("Presiona el botón '+' para agregar una.")
+            }
+        }
+    } else {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(2.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .background(AppColors.Primary.copy(alpha = 0.08f))
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("ID", fontWeight = FontWeight.Bold, color = AppColors.Primary, modifier = Modifier.weight(1f))
+                        Text("Precio", fontWeight = FontWeight.Bold, color = AppColors.Primary, modifier = Modifier.weight(1f))
+                        Text("Acciones", fontWeight = FontWeight.Bold, color = AppColors.Primary, modifier = Modifier.weight(1f))
+                    }
+                    Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+                }
+                items(inscripciones) { inscripcion ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(inscripcion.id.toString(), modifier = Modifier.weight(1f))
+                        Text("$${inscripcion.precio}", modifier = Modifier.weight(1f))
+                        Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
+                            IconButton(onClick = { onEdit(inscripcion) }) {
+                                Icon(Icons.Outlined.Edit, contentDescription = "Editar")
+                            }
+                            IconButton(onClick = { onDelete(inscripcion) }) {
+                                Icon(Icons.Outlined.Delete, contentDescription = "Eliminar", tint = Color.Red)
+                            }
+                        }
+                    }
+                    if (inscripcion != inscripciones.last()) {
                         Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
                     }
                 }

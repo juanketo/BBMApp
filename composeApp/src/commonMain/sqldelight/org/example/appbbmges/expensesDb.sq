@@ -917,6 +917,31 @@ DELETE FROM PrecioBaseEntity WHERE id = ?;
 precioBaseCount:
 SELECT COUNT(*) FROM PrecioBaseEntity;
 
+-- InscriptionEntity
+CREATE TABLE InscriptionEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    precio REAL NOT NULL
+);
+
+-- Consultas para InscriptionEntity
+inscriptionCreate:
+INSERT INTO InscriptionEntity (precio) VALUES (?);
+
+inscriptionSelectAll:
+SELECT * FROM InscriptionEntity;
+
+inscriptionSelectById:
+SELECT * FROM InscriptionEntity WHERE id = ?;
+
+inscriptionUpdate:
+UPDATE InscriptionEntity SET precio = ? WHERE id = ?;
+
+inscriptionDelete:
+DELETE FROM InscriptionEntity WHERE id = ?;
+
+inscriptionCount:
+SELECT COUNT(*) FROM InscriptionEntity;
+
 -- MembershipEntity
 CREATE TABLE MembershipEntity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -945,8 +970,7 @@ DELETE FROM MembershipEntity WHERE id = ?;
 
 membershipCount:
 SELECT COUNT(*) FROM MembershipEntity;
-
--- PaymentEntity
+-- PaymentEntity (Corregida)
 CREATE TABLE PaymentEntity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     student_id INTEGER NOT NULL,
@@ -956,12 +980,15 @@ CREATE TABLE PaymentEntity (
     base_amount REAL NOT NULL,
     discount REAL NOT NULL,
     membership_info TEXT,
-    FOREIGN KEY(student_id) REFERENCES StudentEntity(id)
+    inscription_id INTEGER, -- Nuevo campo para vincular con InscriptionEntity
+    FOREIGN KEY(student_id) REFERENCES StudentEntity(id),
+    FOREIGN KEY(inscription_id) REFERENCES InscriptionEntity(id)
 );
 
+-- Consultas para PaymentEntity
 insertPayment:
-INSERT INTO PaymentEntity (student_id, amount, description, payment_date, base_amount, discount, membership_info)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO PaymentEntity (student_id, amount, description, payment_date, base_amount, discount, membership_info, inscription_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 getPaymentsByStudentId:
 SELECT * FROM PaymentEntity
@@ -977,7 +1004,7 @@ WHERE id = ?;
 
 updatePayment:
 UPDATE PaymentEntity
-SET amount = ?, description = ?, payment_date = ?, base_amount = ?, discount = ?, membership_info = ?
+SET student_id = ?, amount = ?, description = ?, payment_date = ?, base_amount = ?, discount = ?, membership_info = ?, inscription_id = ?
 WHERE id = ?;
 
 deletePayment:
