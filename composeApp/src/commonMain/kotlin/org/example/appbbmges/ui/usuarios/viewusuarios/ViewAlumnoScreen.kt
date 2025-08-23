@@ -4,8 +4,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,7 +28,7 @@ import org.example.appbbmges.StudentAuthorizedAdultEntity
 import org.example.appbbmges.PaymentEntity
 import kotlinx.datetime.*
 import org.example.appbbmges.navigation.SimpleNavController
-import org.example.appbbmges.ui.usuarios.viewusuarios.viewpagos.ViewPagosGlobalScreen
+import org.example.appbbmges.ui.usuarios.viewusuarios.viewpagos.ViewPagosListScreen
 
 object AppColors {
     val Primary = Color(0xFF00B4D8)
@@ -49,7 +47,7 @@ fun ViewAlumnoScreen(
     onDismiss: () -> Unit = { navController.navigateBack() }
 ) {
 
-    var selectedSection by remember { mutableStateOf<String?>("main") }
+    var selectedSection by remember { mutableStateOf<String?>("personal") }
     var showPaymentForm by remember { mutableStateOf(false) }
 
     // Estados de datos
@@ -75,28 +73,22 @@ fun ViewAlumnoScreen(
                 )
             }
 
-            selectedSection == "main" -> {
+            selectedSection == "personal" -> {
                 ViewAlumnoMainScreen(
                     student = student,
                     adults = adults,
                     payments = payments,
                     onDismiss = onDismiss,
                     onSectionClick = { section -> selectedSection = section },
-                    onNewPaymentClick = { showPaymentForm = true }
+                    onNewPaymentClick = { showPaymentForm = true },
+                    selectedSection = selectedSection ?: "personal"
                 )
             }
 
             selectedSection != null -> {
                 when (selectedSection) {
-                    "personal" -> {
-                        StudentPersonalDetailScreen(
-                            student = student,
-                            adults = adults,
-                            onDismiss = { selectedSection = "main" }
-                        )
-                    }
                     "financiera" -> {
-                        ViewPagosGlobalScreen(
+                        ViewPagosListScreen(
                             studentId = studentId,
                             repository = repository,
                             navController = navController
@@ -105,7 +97,7 @@ fun ViewAlumnoScreen(
                     "calendario" -> {
                         StudentCalendarDetailScreen(
                             studentId = studentId,
-                            onDismiss = { selectedSection = "main" },
+                            onDismiss = { selectedSection = "personal" },
                             repository = repository
                         )
                     }
@@ -123,7 +115,8 @@ fun ViewAlumnoMainScreen(
     payments: List<PaymentEntity>,
     onDismiss: () -> Unit,
     onSectionClick: (String) -> Unit,
-    onNewPaymentClick: () -> Unit
+    onNewPaymentClick: () -> Unit,
+    selectedSection: String
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Surface(
@@ -195,29 +188,22 @@ fun ViewAlumnoMainScreen(
 
                     StudentProfileCard(student = student)
 
-                    StudentNavigationCard(onSectionClick = onSectionClick)
+                    StudentNavigationCard(
+                        onSectionClick = onSectionClick,
+                        selectedSection = selectedSection
+                    )
                 }
 
+                // Panel derecho - Solo información personal
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    StudentPersonalPreview(
+                    StudentPersonalSection(
                         student = student,
-                        adults = adults,
-                        onViewMore = { onSectionClick("personal") }
-                    )
-
-                    StudentFinancialPreview(
-                        payments = payments,
-                        onViewMore = { onSectionClick("financiera") },
-                        onNewPaymentClick = onNewPaymentClick
-                    )
-
-                    StudentCalendarPreview(
-                        onViewMore = { onSectionClick("calendario") }
+                        adults = adults
                     )
                 }
             }
@@ -442,7 +428,10 @@ private fun StudentProfileCard(student: StudentEntity) {
 }
 
 @Composable
-private fun StudentNavigationCard(onSectionClick: (String) -> Unit) {
+private fun StudentNavigationCard(
+    onSectionClick: (String) -> Unit,
+    selectedSection: String
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -452,17 +441,20 @@ private fun StudentNavigationCard(onSectionClick: (String) -> Unit) {
             NavigationItem(
                 text = "Información Personal",
                 onClick = { onSectionClick("personal") },
-                icon = Icons.Default.Person
+                icon = Icons.Default.Person,
+                isSelected = selectedSection == "personal"
             )
             NavigationItem(
                 text = "Información Financiera",
                 onClick = { onSectionClick("financiera") },
-                icon = Icons.Default.AttachMoney
+                icon = Icons.Default.AttachMoney,
+                isSelected = selectedSection == "financiera"
             )
             NavigationItem(
                 text = "Calendario de clases",
                 onClick = { onSectionClick("calendario") },
-                icon = Icons.Default.CalendarToday
+                icon = Icons.Default.CalendarToday,
+                isSelected = selectedSection == "calendario"
             )
         }
     }
@@ -473,12 +465,17 @@ private fun NavigationItem(
     text: String,
     onClick: () -> Unit,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isSelected: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
+            .background(
+                if (isSelected) Color(0xFF6366F1).copy(alpha = 0.1f)
+                else Color.Transparent
+            )
             .clickable { onClick() }
             .padding(vertical = 12.dp, horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -487,170 +484,14 @@ private fun NavigationItem(
         Icon(
             icon,
             contentDescription = null,
-            tint = Color(0xFF6366F1),
+            tint = if (isSelected) Color(0xFF6366F1) else Color(0xFF6B7280),
             modifier = Modifier.size(20.dp)
         )
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF374151),
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-@Composable
-private fun StudentPersonalPreview(
-    student: StudentEntity,
-    adults: List<StudentAuthorizedAdultEntity>,
-    onViewMore: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "INFORMACIÓN PERSONAL",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                TextButton(onClick = onViewMore) {
-                    Text("Ver más")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Preview de algunos campos
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                PreviewField("Estado", if (student.active == 1L) "Activo" else "Inactivo", Modifier.weight(1f))
-                PreviewField("Teléfono", student.phone ?: "N/A", Modifier.weight(1f))
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            PreviewField("Email", student.email ?: "N/A")
-
-            if (adults.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                PreviewField("Adultos autorizados", "${adults.size} registrados")
-            }
-        }
-    }
-}
-
-@Composable
-private fun StudentFinancialPreview(
-    payments: List<PaymentEntity>,
-    onViewMore: () -> Unit,
-    onNewPaymentClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "INFORMACIÓN FINANCIERA",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Row {
-                    TextButton(onClick = onNewPaymentClick) {
-                        Text("Nuevo Pago")
-                    }
-                    TextButton(onClick = onViewMore) {
-                        Text("Ver más")
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (payments.isEmpty()) {
-                Text("No hay pagos registrados", color = Color(0xFF6B7280))
-            } else {
-                val totalAmount = payments.sumOf { it.amount }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    PreviewField("Total pagos", "${payments.size}", Modifier.weight(1f))
-                    PreviewField("Monto total", "$${totalAmount.toInt()}", Modifier.weight(1f))
-                }
-
-                if (payments.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    val lastPayment = payments.maxByOrNull { it.payment_date }
-                    lastPayment?.let {
-                        PreviewField("Último pago", "$${it.amount.toInt()} - ${formatTimestamp(it.payment_date)}")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun StudentCalendarPreview(onViewMore: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "CALENDARIO DE CLASES",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                TextButton(onClick = onViewMore) {
-                    Text("Ver más")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text("Próximas clases y horarios", color = Color(0xFF6B7280))
-            Text("Funcionalidad pendiente", color = Color(0xFF9CA3AF), style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-@Composable
-private fun PreviewField(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        Text(
-            label,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color(0xFF6B7280),
-            fontWeight = FontWeight.Medium
-        )
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF374151)
+            color = if (isSelected) Color(0xFF6366F1) else Color(0xFF374151),
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
         )
     }
 }
@@ -802,80 +643,6 @@ private fun StudentPersonalSection(
                     }
                 }
             )
-        }
-    }
-}
-
-@Composable
-private fun StudentFinancialSection(
-    payments: List<PaymentEntity>,
-    onNewPaymentClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "HISTORIAL DE PAGOS",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF374151)
-                    )
-                    Button(onClick = onNewPaymentClick) {
-                        Text("Nuevo Pago")
-                    }
-                }
-
-                if (payments.isEmpty()) {
-                    Text(
-                        "No hay pagos registrados para este alumno.",
-                        modifier = Modifier.padding(16.dp),
-                        color = Color(0xFF6B7280)
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 500.dp)
-                    ) {
-                        items(payments) { payment ->
-                            PaymentItem(payment)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PaymentItem(payment: PaymentEntity) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = AppColors.Background)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            val formattedDate = formatTimestamp(payment.payment_date)
-            Text("Fecha: $formattedDate", style = MaterialTheme.typography.bodyMedium)
-            Text("Monto: \${payment.amount.toInt()}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = AppColors.Primary)
-            Text("Descripción: ${payment.description}", style = MaterialTheme.typography.bodySmall)
-            if (payment.membership_info != null) {
-                Text("Membresía: ${payment.membership_info}", style = MaterialTheme.typography.bodySmall)
-            }
         }
     }
 }

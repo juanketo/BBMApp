@@ -40,6 +40,7 @@ fun ViewPagosGlobalScreen(
     studentId: Long,
     repository: Repository,
     navController: SimpleNavController,
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val paymentRepository = remember { DatabasePaymentRepository(repository) }
@@ -97,7 +98,6 @@ fun ViewPagosGlobalScreen(
         }
     }
 
-    // Modal centrado con Card
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -167,7 +167,6 @@ fun ViewPagosGlobalScreen(
                             }
                         )
 
-                        // Configuración específica
                         when (selectedType) {
                             is PaymentSelection.Disciplines -> {
                                 DisciplinesConfiguration(
@@ -238,7 +237,7 @@ fun ViewPagosGlobalScreen(
                                                 result.description
                                             }
                                         )
-                                        navController.navigateBack()
+                                        onDismiss() // ← Cambiado de navController.navigateBack() a onDismiss
                                     } catch (e: Exception) {
                                         showError = true
                                         errorMessage = "Error al guardar el pago: ${e.message}"
@@ -246,7 +245,7 @@ fun ViewPagosGlobalScreen(
                                 }
                             }
                         },
-                        onCancel = { navController.navigateBack() }
+                        onCancel = onDismiss // ← Cambiado de navController.navigateBack() a onDismiss
                     )
                 }
             }
