@@ -40,7 +40,6 @@ fun ViewPagosListScreen(
             ViewPagosGlobalScreen(
                 studentId = studentId,
                 repository = repository,
-                navController = navController,
                 onDismiss = { showPaymentForm = false },
                 modifier = modifier
             )

@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.sp
 import appbbmges.composeapp.generated.resources.Res
 import appbbmges.composeapp.generated.resources.logoSystem
 import org.example.appbbmges.data.Repository
-import org.example.appbbmges.navigation.SimpleNavController
 import org.example.appbbmges.ui.usuarios.viewusuarios.AppColors
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
@@ -39,7 +38,6 @@ import kotlinx.datetime.Clock
 fun ViewPagosGlobalScreen(
     studentId: Long,
     repository: Repository,
-    navController: SimpleNavController,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -58,7 +56,7 @@ fun ViewPagosGlobalScreen(
     val availableMemberships by produceState<List<MembershipInfo>>(emptyList()) {
         value = try {
             paymentCalculator.getAvailableMemberships()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList()
         }
     }
@@ -114,11 +112,11 @@ fun ViewPagosGlobalScreen(
             shape = RoundedCornerShape(12.dp)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                // Logo de fondo
+
                 BackgroundLogo()
 
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Header con título centrado y fondo divisorio
+
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = AppColors.Primary.copy(alpha = 0.1f)),
@@ -140,7 +138,6 @@ fun ViewPagosGlobalScreen(
                         }
                     }
 
-                    // Contenido principal con scroll
                     Column(
                         modifier = Modifier
                             .weight(1f)
@@ -148,7 +145,6 @@ fun ViewPagosGlobalScreen(
                             .padding(24.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Información del servicio
                         ServiceInfoCard(
                             selectedType = selectedType,
                             numClasses = numClasses,
@@ -157,7 +153,6 @@ fun ViewPagosGlobalScreen(
                             paymentResult = paymentResult
                         )
 
-                        // Selector de tipo de servicio
                         ServiceTypeSelector(
                             selectedType = selectedType,
                             availableMemberships = availableMemberships,
@@ -188,7 +183,6 @@ fun ViewPagosGlobalScreen(
                             is PaymentSelection.SiblingsWithMixedDisciplines -> TODO()
                         }
 
-                        // Checkbox de inscripción
                         EnrollmentCheckbox(
                             includeEnrollment = includeEnrollment,
                             onEnrollmentChanged = { includeEnrollment = it }
@@ -237,7 +231,7 @@ fun ViewPagosGlobalScreen(
                                                 result.description
                                             }
                                         )
-                                        onDismiss() // ← Cambiado de navController.navigateBack() a onDismiss
+                                        onDismiss()
                                     } catch (e: Exception) {
                                         showError = true
                                         errorMessage = "Error al guardar el pago: ${e.message}"
@@ -245,7 +239,7 @@ fun ViewPagosGlobalScreen(
                                 }
                             }
                         },
-                        onCancel = onDismiss // ← Cambiado de navController.navigateBack() a onDismiss
+                        onCancel = onDismiss
                     )
                 }
             }
@@ -289,7 +283,6 @@ private fun ServiceInfoCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icono del servicio
             Card(
                 modifier = Modifier.size(60.dp),
                 colors = CardDefaults.cardColors(containerColor = AppColors.Primary.copy(alpha = 0.1f)),

@@ -43,7 +43,6 @@ object AppColors {
     val Background = Color(0xFFF8F9FA)
     val OnPrimary = Color.White
     val TextColor = Color(0xFF333333)
-    val BackgroundOverlay = Color(0xFF1C1C1C).copy(alpha = 0.7f)
 }
 
 @Composable

@@ -284,7 +284,7 @@ class PaymentCalculator(
             }
 
             else -> {
-                // Caso inválido: hermanos con múltiples disciplinas cada uno
+
                 PaymentResult(
                     baseAmount = 0.0,
                     discount = 0.0,
