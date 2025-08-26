@@ -980,7 +980,7 @@ CREATE TABLE PaymentEntity (
     base_amount REAL NOT NULL,
     discount REAL NOT NULL,
     membership_info TEXT,
-    inscription_id INTEGER, -- Nuevo campo para vincular con InscriptionEntity
+    inscription_id INTEGER,
     FOREIGN KEY(student_id) REFERENCES StudentEntity(id),
     FOREIGN KEY(inscription_id) REFERENCES InscriptionEntity(id)
 );

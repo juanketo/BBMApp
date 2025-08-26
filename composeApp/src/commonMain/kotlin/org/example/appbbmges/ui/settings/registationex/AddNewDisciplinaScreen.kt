@@ -582,7 +582,6 @@ fun AddNewDisciplinaScreen(
     }
 }
 
-// --- Composable para el Logo de Fondo (tal como lo tenías) ---
 @Composable
 private fun BackgroundLogo() {
     Box(

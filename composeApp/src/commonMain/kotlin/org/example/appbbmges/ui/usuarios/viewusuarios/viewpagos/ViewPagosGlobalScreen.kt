@@ -44,6 +44,12 @@ fun ViewPagosGlobalScreen(
     val paymentRepository = remember { DatabasePaymentRepository(repository) }
     val paymentCalculator = remember { PaymentCalculator(paymentRepository) }
 
+    // Obtener el precio actual de inscripción
+    val currentInscriptionPrice = remember {
+        val inscriptions = repository.getAllInscriptions()
+        inscriptions.lastOrNull()?.precio ?: 800.00 // Valor por defecto si no hay inscripciones
+    }
+
     var selectedType by remember { mutableStateOf<PaymentSelection?>(null) }
     var numClasses by remember { mutableIntStateOf(1) }
     var selectedMembershipId by remember { mutableLongStateOf(0L) }
@@ -179,13 +185,15 @@ fun ViewPagosGlobalScreen(
                             null -> {
                                 EmptyStateCard()
                             }
-
-                            is PaymentSelection.SiblingsWithMixedDisciplines -> TODO()
+                            is PaymentSelection.SiblingsWithMixedDisciplines -> {
+                                // Manejar este caso si es necesario
+                            }
                         }
 
                         EnrollmentCheckbox(
                             includeEnrollment = includeEnrollment,
-                            onEnrollmentChanged = { includeEnrollment = it }
+                            onEnrollmentChanged = { includeEnrollment = it },
+                            enrollmentFee = currentInscriptionPrice
                         )
 
                         // Método de pago
@@ -218,18 +226,19 @@ fun ViewPagosGlobalScreen(
                             paymentResult?.let { result ->
                                 if (!showError) {
                                     try {
-                                        repository.insertEventPayment(
+                                        repository.insertPayment(
                                             studentId = studentId,
-                                            franchiseId = 1L,
                                             amount = result.finalAmount,
-                                            paymentDate = Clock.System.now().toString().substring(0, 10),
-                                            paymentType = if (selectedType is PaymentSelection.Membership) "MEMBERSHIP" else "REGULAR",
-                                            eventId = null,
-                                            reference = if (selectedType is PaymentSelection.Membership) {
+                                            description = result.description,
+                                            paymentDate = Clock.System.now().toEpochMilliseconds(),
+                                            baseAmount = result.baseAmount,
+                                            discount = result.discount,
+                                            membershipInfo = if (selectedType is PaymentSelection.Membership) {
                                                 availableMemberships.find { it.id == selectedMembershipId }?.name
                                             } else {
-                                                result.description
-                                            }
+                                                "${numClasses} disciplina(s)"
+                                            },
+                                            inscriptionId = if (includeEnrollment) 1L else null
                                         )
                                         onDismiss()
                                     } catch (e: Exception) {
@@ -492,7 +501,8 @@ private fun EmptyStateCard() {
 @Composable
 private fun EnrollmentCheckbox(
     includeEnrollment: Boolean,
-    onEnrollmentChanged: (Boolean) -> Unit
+    onEnrollmentChanged: (Boolean) -> Unit,
+    enrollmentFee: Double
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -504,7 +514,7 @@ private fun EnrollmentCheckbox(
             colors = CheckboxDefaults.colors(checkedColor = AppColors.Primary)
         )
         Text(
-            text = "Incluir Inscripción ($800.00 MXN)",
+            text = "Incluir Inscripción ($${enrollmentFee.roundToInt()}.00 MXN)",
             fontSize = 14.sp,
             modifier = Modifier.padding(start = 8.dp)
         )
