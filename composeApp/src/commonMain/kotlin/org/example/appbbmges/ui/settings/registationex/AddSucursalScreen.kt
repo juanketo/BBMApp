@@ -5,17 +5,21 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
@@ -26,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import appbbmges.composeapp.generated.resources.Res
 import appbbmges.composeapp.generated.resources.logoSystem
 import org.example.appbbmges.data.Repository
+import org.example.appbbmges.ui.dashboard.clickable
 import org.example.appbbmges.ui.usuarios.AppColors
 import org.jetbrains.compose.resources.painterResource
 
@@ -40,7 +45,7 @@ enum class SucursalFormStep {
 sealed class SucursalFormState {
     object Idle : SucursalFormState()
     object Loading : SucursalFormState()
-    data class Error(val message: String) : SucursalFormState()
+    data class Error(val message: String, val retryable: Boolean = true) : SucursalFormState()
     object Success : SucursalFormState()
 }
 
@@ -51,22 +56,36 @@ data class SucursalValidationResult(
     val phoneError: String? = null,
     val basePriceError: String? = null,
     val currencyError: String? = null,
-    val addressError: String? = null
+    val addressError: String? = null,
+    val zipError: String? = null,
+    val taxIdError: String? = null
 )
 
 class SucursalValidator {
     companion object {
+        // Función para capitalizar automáticamente
+        private fun capitalizeText(text: String): String {
+            return text.split(" ").joinToString(" ") { word ->
+                if (word.isNotEmpty()) {
+                    word.substring(0, 1).uppercase() + word.substring(1).lowercase()
+                } else {
+                    word
+                }
+            }.trim()
+        }
+
         fun validatePersonalInfo(name: String, email: String, phone: String): SucursalValidationResult {
+            val capitalizedName = capitalizeText(name)
             val nameError = when {
-                name.isEmpty() -> "El nombre de la sucursal es obligatorio"
-                name.length < 3 -> "Mínimo 3 caracteres para el nombre"
-                name.length > 100 -> "Máximo 100 caracteres para el nombre"
+                capitalizedName.isEmpty() -> "El nombre de la sucursal es obligatorio"
+                capitalizedName.length < 3 -> "Mínimo 3 caracteres para el nombre"
+                capitalizedName.length > 100 -> "Máximo 100 caracteres para el nombre"
                 else -> null
             }
 
             val emailError = if (email.isNotEmpty()) {
                 when {
-                    !email.matches(Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\$")) -> "Formato de email inválido"
+                    !email.matches(Regex("^[a-z0-9+_.-]+@[a-z0-9.-]+\\.[a-z]{2,}\$")) -> "Formato de email inválido (solo minúsculas)"
                     email.length > 100 -> "Máximo 100 caracteres para el email"
                     else -> null
                 }
@@ -74,8 +93,7 @@ class SucursalValidator {
 
             val phoneError = if (phone.isNotEmpty()) {
                 when {
-                    !phone.matches(Regex("^[0-9+\\s()-]+\$")) -> "Solo números, espacios y caracteres de teléfono"
-                    phone.length > 20 -> "Máximo 20 caracteres para el teléfono"
+                    !phone.matches(Regex("^[0-9]{10}\$")) -> "Debe tener exactamente 10 dígitos"
                     else -> null
                 }
             } else null
@@ -93,12 +111,17 @@ class SucursalValidator {
                 when {
                     basePrice.toDoubleOrNull() == null -> "El precio base debe ser un número válido"
                     basePrice.toDouble() < 0 -> "El precio no puede ser negativo"
+                    basePrice.toDouble() > 999999.99 -> "El precio es demasiado alto"
                     else -> null
                 }
             } else null
 
-            val currencyError = if (currency.isNotEmpty() && currency.length > 10) {
-                "Máximo 10 caracteres para la moneda"
+            val currencyError = if (currency.isNotEmpty()) {
+                when {
+                    currency.length > 10 -> "Máximo 10 caracteres para la moneda"
+                    !currency.matches(Regex("^[A-Z]{3}\$")) -> "Use código de 3 letras (MXN, USD, EUR)"
+                    else -> null
+                }
             } else null
 
             return SucursalValidationResult(
@@ -116,15 +139,36 @@ class SucursalValidator {
                 street.isNotEmpty() && street.length > 100 -> "Máximo 100 caracteres para la calle"
                 number.isNotEmpty() && number.length > 20 -> "Máximo 20 caracteres para el número"
                 neighborhood.isNotEmpty() && neighborhood.length > 50 -> "Máximo 50 caracteres para la colonia"
-                zip.isNotEmpty() && !zip.matches(Regex("^[0-9]{5}(-[0-9]{4})?\$")) -> "Formato de código postal inválido"
                 city.isNotEmpty() && city.length > 50 -> "Máximo 50 caracteres para la ciudad"
                 country.isNotEmpty() && country.length > 50 -> "Máximo 50 caracteres para el país"
                 else -> null
             }
 
+            val zipError = if (zip.isNotEmpty()) {
+                when {
+                    !zip.matches(Regex("^[0-9]{5}\$")) -> "El código postal debe tener 5 dígitos"
+                    else -> null
+                }
+            } else null
+
             return SucursalValidationResult(
-                isValid = addressError == null,
-                addressError = addressError
+                isValid = addressError == null && zipError == null,
+                addressError = addressError,
+                zipError = zipError
+            )
+        }
+
+        fun validateTaxInfo(taxId: String): SucursalValidationResult {
+            val taxIdError = if (taxId.isNotEmpty()) {
+                when {
+                    !taxId.matches(Regex("^[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}\$")) -> "Formato de RFC inválido"
+                    else -> null
+                }
+            } else null
+
+            return SucursalValidationResult(
+                isValid = taxIdError == null,
+                taxIdError = taxIdError
             )
         }
     }
@@ -138,6 +182,7 @@ fun AddSucursalScreen(
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
+    val zonas = listOf("", "Norte", "Sur", "Este", "Oeste", "Centro", "Noreste", "Noroeste", "Sureste", "Suroeste")
 
     // Estados del formulario
     var currentStep by remember { mutableStateOf(SucursalFormStep.PERSONAL_INFO) }
@@ -145,21 +190,43 @@ fun AddSucursalScreen(
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var basePrice by remember { mutableStateOf("") }
-    var currency by remember { mutableStateOf("") }
+    var currency by remember { mutableStateOf("MXN") }
     var addressStreet by remember { mutableStateOf("") }
     var addressNumber by remember { mutableStateOf("") }
     var addressNeighborhood by remember { mutableStateOf("") }
     var addressZip by remember { mutableStateOf("") }
     var addressCity by remember { mutableStateOf("") }
-    var addressCountry by remember { mutableStateOf("") }
+    var addressCountry by remember { mutableStateOf("México") }
     var taxName by remember { mutableStateOf("") }
     var taxId by remember { mutableStateOf("") }
     var zone by remember { mutableStateOf("") }
     var isNew by remember { mutableStateOf(false) }
     var active by remember { mutableStateOf(true) }
+    var expandedZonas by remember { mutableStateOf(false) }
 
     var formState by remember { mutableStateOf<SucursalFormState>(SucursalFormState.Idle) }
     var validationResult by remember { mutableStateOf(SucursalValidationResult(true)) }
+
+    // Obtener precio base de la base de datos
+    val preciosBase by remember { mutableStateOf(repository.getAllPreciosBase()) }
+    val precioBaseDefault by remember {
+        mutableStateOf(preciosBase.firstOrNull()?.precio?.toString() ?: "1500.00")
+    }
+
+    // Definir las funciones de cambio que faltaban
+    val onIsNewChange: (Boolean) -> Unit = { isNew = it }
+    val onActiveChange: (Boolean) -> Unit = { active = it }
+
+    // Función para capitalizar automáticamente
+    fun capitalizeText(text: String): String {
+        return text.split(" ").joinToString(" ") { word ->
+            if (word.isNotEmpty()) {
+                word.substring(0, 1).uppercase() + word.substring(1).lowercase()
+            } else {
+                word
+            }
+        }.trim()
+    }
 
     // Función de validación por paso
     fun validateCurrentStep(): Boolean {
@@ -182,12 +249,15 @@ fun AddSucursalScreen(
                 validationResult = result
                 result.isValid
             }
-            SucursalFormStep.ADDITIONAL_INFO -> true // Sin validación estricta para info adicional
+            SucursalFormStep.ADDITIONAL_INFO -> {
+                val result = SucursalValidator.validateTaxInfo(taxId)
+                validationResult = result
+                result.isValid
+            }
             SucursalFormStep.CONFIRMATION -> true
         }
     }
 
-    // Función para proceder al siguiente paso
     fun proceedToNext() {
         when (currentStep) {
             SucursalFormStep.PERSONAL_INFO -> {
@@ -206,7 +276,9 @@ fun AddSucursalScreen(
                 }
             }
             SucursalFormStep.ADDITIONAL_INFO -> {
-                currentStep = SucursalFormStep.CONFIRMATION
+                if (validateCurrentStep()) {
+                    currentStep = SucursalFormStep.CONFIRMATION
+                }
             }
             SucursalFormStep.CONFIRMATION -> {
                 formState = SucursalFormState.Loading
@@ -215,7 +287,7 @@ fun AddSucursalScreen(
                         name,
                         email.ifEmpty { null },
                         phone.ifEmpty { null },
-                        basePrice.ifEmpty { null }?.toDouble(),
+                        basePrice.ifEmpty { precioBaseDefault }?.toDoubleOrNull(),
                         currency.ifEmpty { null },
                         addressStreet.ifEmpty { null },
                         addressNumber.ifEmpty { null },
@@ -232,9 +304,20 @@ fun AddSucursalScreen(
                     formState = SucursalFormState.Success
                     onDismiss()
                 } catch (e: Exception) {
-                    formState = SucursalFormState.Error("Error al registrar la sucursal: ${e.message}")
+                    formState = SucursalFormState.Error(
+                        "Error al registrar la sucursal: ${e.message ?: "Error desconocido"}",
+                        retryable = true
+                    )
+                    e.printStackTrace()
                 }
             }
+        }
+    }
+
+    fun proceedBack() {
+        if (currentStep.ordinal > 0) {
+            currentStep = SucursalFormStep.entries[currentStep.ordinal - 1]
+            formState = SucursalFormState.Idle
         }
     }
 
@@ -281,11 +364,15 @@ fun AddSucursalScreen(
                         fontWeight = FontWeight.Bold
                     )
 
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     LinearProgressIndicator(
                         progress = { progress },
                         modifier = Modifier.fillMaxWidth(),
                         color = AppColors.Primary
                     )
+
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
                         text = when (currentStep) {
@@ -308,14 +395,22 @@ fun AddSucursalScreen(
                             email = email,
                             phone = phone,
                             validationResult = validationResult,
-                            onNameChange = { name = it },
-                            onEmailChange = { email = it },
-                            onPhoneChange = { phone = it },
+                            onNameChange = {
+                                name = capitalizeText(it)
+                            },
+                            onEmailChange = {
+                                email = it.lowercase().filter { char ->
+                                    char.isLetterOrDigit() || char in listOf('@', '.', '_', '-')
+                                }
+                            },
+                            onPhoneChange = {
+                                phone = it.filter { char -> char.isDigit() }.take(10)
+                            },
                             focusManager = focusManager
                         )
 
                         SucursalFormStep.DETAIL_INFO -> DetailInfoStep(
-                            basePrice = basePrice,
+                            basePrice = if (basePrice.isEmpty()) precioBaseDefault else basePrice,
                             currency = currency,
                             validationResult = validationResult,
                             onBasePriceChange = { basePrice = it },
@@ -331,12 +426,12 @@ fun AddSucursalScreen(
                             city = addressCity,
                             country = addressCountry,
                             validationResult = validationResult,
-                            onStreetChange = { addressStreet = it },
-                            onNumberChange = { addressNumber = it },
-                            onNeighborhoodChange = { addressNeighborhood = it },
-                            onZipChange = { addressZip = it },
-                            onCityChange = { addressCity = it },
-                            onCountryChange = { addressCountry = it },
+                            onStreetChange = { addressStreet = capitalizeText(it) },
+                            onNumberChange = { addressNumber = it.filter { char -> char.isLetterOrDigit() } },
+                            onNeighborhoodChange = { addressNeighborhood = capitalizeText(it) },
+                            onZipChange = { addressZip = it.filter { char -> char.isDigit() }.take(5) },
+                            onCityChange = { addressCity = capitalizeText(it) },
+                            onCountryChange = { addressCountry = capitalizeText(it) },
                             focusManager = focusManager
                         )
 
@@ -344,13 +439,19 @@ fun AddSucursalScreen(
                             taxName = taxName,
                             taxId = taxId,
                             zone = zone,
+                            zonas = zonas,
+                            expandedZonas = expandedZonas,
                             isNew = isNew,
                             active = active,
-                            onTaxNameChange = { taxName = it },
-                            onTaxIdChange = { taxId = it },
+                            onTaxNameChange = { taxName = capitalizeText(it) },
+                            onTaxIdChange = { taxId = it.uppercase().filter { char ->
+                                char.isLetterOrDigit() || char == '&' || char == 'Ñ'
+                            }},
                             onZoneChange = { zone = it },
-                            onIsNewChange = { isNew = it },
-                            onActiveChange = { active = it }
+                            onExpandedZonasChange = { expandedZonas = it },
+                            onIsNewChange = onIsNewChange,
+                            onActiveChange = onActiveChange,
+                            validationResult = validationResult
                         )
 
                         SucursalFormStep.CONFIRMATION -> ConfirmationStep(
@@ -396,9 +497,7 @@ fun AddSucursalScreen(
 
                         if (currentStep != SucursalFormStep.PERSONAL_INFO) {
                             Button(
-                                onClick = {
-                                    currentStep = SucursalFormStep.values()[currentStep.ordinal - 1]
-                                },
+                                onClick = { proceedBack() },
                                 modifier = Modifier.weight(1f),
                                 enabled = formState !is SucursalFormState.Loading,
                                 colors = ButtonDefaults.buttonColors(
@@ -437,323 +536,6 @@ fun AddSucursalScreen(
                             }
                         }
                     }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PersonalInfoStep(
-    name: String,
-    email: String,
-    phone: String,
-    validationResult: SucursalValidationResult,
-    onNameChange: (String) -> Unit,
-    onEmailChange: (String) -> Unit,
-    onPhoneChange: (String) -> Unit,
-    focusManager: androidx.compose.ui.focus.FocusManager
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(
-            value = name,
-            onValueChange = onNameChange,
-            label = { Text("Nombre de la sucursal *") },
-            isError = validationResult.nameError != null,
-            supportingText = { validationResult.nameError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
-        )
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = onEmailChange,
-            label = { Text("Email") },
-            isError = validationResult.emailError != null,
-            supportingText = { validationResult.emailError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
-        )
-
-        OutlinedTextField(
-            value = phone,
-            onValueChange = onPhoneChange,
-            label = { Text("Teléfono") },
-            isError = validationResult.phoneError != null,
-            supportingText = { validationResult.phoneError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DetailInfoStep(
-    basePrice: String,
-    currency: String,
-    validationResult: SucursalValidationResult,
-    onBasePriceChange: (String) -> Unit,
-    onCurrencyChange: (String) -> Unit,
-    focusManager: androidx.compose.ui.focus.FocusManager
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(
-            value = basePrice,
-            onValueChange = onBasePriceChange,
-            label = { Text("Precio base") },
-            isError = validationResult.basePriceError != null,
-            supportingText = {
-                validationResult.basePriceError?.let {
-                    Text(it, color = MaterialTheme.colorScheme.error)
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Decimal,
-                imeAction = ImeAction.Next
-            ),
-            keyboardActions = KeyboardActions(
-                onNext = { focusManager.moveFocus(FocusDirection.Down) }
-            ),
-            leadingIcon = { Text("$") }
-        )
-
-        OutlinedTextField(
-            value = currency,
-            onValueChange = onCurrencyChange,
-            label = { Text("Moneda") },
-            isError = validationResult.currencyError != null,
-            supportingText = {
-                validationResult.currencyError?.let {
-                    Text(it, color = MaterialTheme.colorScheme.error)
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-            placeholder = { Text("MXN, USD, EUR...") }
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddressInfoStep(
-    street: String,
-    number: String,
-    neighborhood: String,
-    zip: String,
-    city: String,
-    country: String,
-    validationResult: SucursalValidationResult,
-    onStreetChange: (String) -> Unit,
-    onNumberChange: (String) -> Unit,
-    onNeighborhoodChange: (String) -> Unit,
-    onZipChange: (String) -> Unit,
-    onCityChange: (String) -> Unit,
-    onCountryChange: (String) -> Unit,
-    focusManager: androidx.compose.ui.focus.FocusManager
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedTextField(
-                value = street,
-                onValueChange = onStreetChange,
-                label = { Text("Calle") },
-                modifier = Modifier.weight(0.7f),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                )
-            )
-
-            OutlinedTextField(
-                value = number,
-                onValueChange = onNumberChange,
-                label = { Text("Número") },
-                modifier = Modifier.weight(0.3f),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                )
-            )
-        }
-
-        OutlinedTextField(
-            value = neighborhood,
-            onValueChange = onNeighborhoodChange,
-            label = { Text("Colonia/Barrio") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(
-                onNext = { focusManager.moveFocus(FocusDirection.Down) }
-            )
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedTextField(
-                value = zip,
-                onValueChange = onZipChange,
-                label = { Text("Código postal") },
-                modifier = Modifier.weight(0.4f),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                )
-            )
-
-            OutlinedTextField(
-                value = city,
-                onValueChange = onCityChange,
-                label = { Text("Ciudad") },
-                modifier = Modifier.weight(0.6f),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                )
-            )
-        }
-
-        OutlinedTextField(
-            value = country,
-            onValueChange = onCountryChange,
-            label = { Text("País") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
-        )
-
-        validationResult.addressError?.let {
-            Text(
-                text = it,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AdditionalInfoStep(
-    taxName: String,
-    taxId: String,
-    zone: String,
-    isNew: Boolean,
-    active: Boolean,
-    onTaxNameChange: (String) -> Unit,
-    onTaxIdChange: (String) -> Unit,
-    onZoneChange: (String) -> Unit,
-    onIsNewChange: (Boolean) -> Unit,
-    onActiveChange: (Boolean) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(
-            value = taxName,
-            onValueChange = onTaxNameChange,
-            label = { Text("Razón social") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-        )
-
-        OutlinedTextField(
-            value = taxId,
-            onValueChange = onTaxIdChange,
-            label = { Text("RFC/Tax ID") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-        )
-
-        OutlinedTextField(
-            value = zone,
-            onValueChange = onZoneChange,
-            label = { Text("Zona") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Sucursal nueva",
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                        Text(
-                            text = "Marcar si es una sucursal nueva",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
-                        )
-                    }
-                    Switch(
-                        checked = isNew,
-                        onCheckedChange = onIsNewChange,
-                        colors = SwitchDefaults.colors(checkedThumbColor = AppColors.Primary)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Activa",
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                        Text(
-                            text = "Si la sucursal está activa",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
-                        )
-                    }
-                    Switch(
-                        checked = active,
-                        onCheckedChange = onActiveChange,
-                        colors = SwitchDefaults.colors(checkedThumbColor = AppColors.Primary)
-                    )
                 }
             }
         }
@@ -830,7 +612,7 @@ private fun ConfirmationStep(
                             color = AppColors.Primary
                         )
 
-                        if (basePrice.isNotEmpty()) ConfirmationField("Precio base", "$basePrice")
+                        if (basePrice.isNotEmpty()) ConfirmationField("Precio base", "$$basePrice")
                         if (currency.isNotEmpty()) ConfirmationField("Moneda", currency)
                     }
                 }
@@ -839,7 +621,8 @@ private fun ConfirmationStep(
 
         if (addressStreet.isNotEmpty() || addressNumber.isNotEmpty() ||
             addressNeighborhood.isNotEmpty() || addressZip.isNotEmpty() ||
-            addressCity.isNotEmpty() || addressCountry.isNotEmpty()) {
+            addressCity.isNotEmpty() || addressCountry.isNotEmpty()
+        ) {
             item {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA))
@@ -922,11 +705,29 @@ private fun ConfirmationStep(
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                 ) {
-                    Text(
-                        text = formState.message,
+                    Column(
                         modifier = Modifier.padding(16.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Error",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = formState.message,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        if (formState.retryable) {
+                            Text(
+                                text = "Puede intentar nuevamente",
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -955,12 +756,14 @@ private fun ConfirmationField(label: String, value: String) {
 
 @Composable
 private fun BackgroundLogo() {
+    val painter = painterResource(Res.drawable.logoSystem)
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Image(
-            painter = painterResource(Res.drawable.logoSystem),
+            painter = painter,
             contentDescription = null,
             modifier = Modifier
                 .fillMaxSize()
@@ -968,5 +771,425 @@ private fun BackgroundLogo() {
                 .alpha(0.08f),
             contentScale = ContentScale.Fit
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PersonalInfoStep(
+    name: String,
+    email: String,
+    phone: String,
+    validationResult: SucursalValidationResult,
+    onNameChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onPhoneChange: (String) -> Unit,
+    focusManager: FocusManager
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(
+            value = name,
+            onValueChange = onNameChange,
+            label = { Text("Nombre de la sucursal *") },
+            isError = validationResult.nameError != null,
+            supportingText = {
+                validationResult.nameError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
+            placeholder = { Text("Zona Esmeralda") }
+        )
+
+        OutlinedTextField(
+            value = email,
+            onValueChange = onEmailChange,
+            label = { Text("Email") },
+            isError = validationResult.emailError != null,
+            supportingText = {
+                validationResult.emailError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
+            placeholder = { Text("ejemplo@correo.com") }
+        )
+
+        OutlinedTextField(
+            value = phone,
+            onValueChange = onPhoneChange,
+            label = { Text("Teléfono *") },
+            isError = validationResult.phoneError != null,
+            supportingText = {
+                validationResult.phoneError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                } ?: if (phone.isNotEmpty()) {
+                    Text("${phone.length}/10 dígitos", color = Color.Gray)
+                } else {
+                    null
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Phone,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = { focusManager.clearFocus() }
+            ),
+            placeholder = { Text("5512345678") }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DetailInfoStep(
+    basePrice: String,
+    currency: String,
+    validationResult: SucursalValidationResult,
+    onBasePriceChange: (String) -> Unit,
+    onCurrencyChange: (String) -> Unit,
+    focusManager: FocusManager
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(
+            value = basePrice,
+            onValueChange = { value ->
+                if (value.isEmpty() || value.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                    onBasePriceChange(value)
+                }
+            },
+            label = { Text("Precio base *") },
+            isError = validationResult.basePriceError != null,
+            supportingText = {
+                validationResult.basePriceError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Decimal,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
+            leadingIcon = { Text("$") },
+            placeholder = { Text("1500.00") }
+        )
+
+        OutlinedTextField(
+            value = currency,
+            onValueChange = { value ->
+                onCurrencyChange(value.uppercase().take(3))
+            },
+            label = { Text("Moneda") },
+            isError = validationResult.currencyError != null,
+            supportingText = {
+                validationResult.currencyError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = { focusManager.clearFocus() }
+            ),
+            placeholder = { Text("MXN") }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddressInfoStep(
+    street: String,
+    number: String,
+    neighborhood: String,
+    zip: String,
+    city: String,
+    country: String,
+    validationResult: SucursalValidationResult,
+    onStreetChange: (String) -> Unit,
+    onNumberChange: (String) -> Unit,
+    onNeighborhoodChange: (String) -> Unit,
+    onZipChange: (String) -> Unit,
+    onCityChange: (String) -> Unit,
+    onCountryChange: (String) -> Unit,
+    focusManager: FocusManager
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = street,
+                onValueChange = onStreetChange,
+                label = { Text("Calle") },
+                modifier = Modifier.weight(0.7f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
+                placeholder = { Text("Av. Principal") }
+            )
+
+            OutlinedTextField(
+                value = number,
+                onValueChange = onNumberChange,
+                label = { Text("Número") },
+                modifier = Modifier.weight(0.3f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
+                placeholder = { Text("123") }
+            )
+        }
+
+        OutlinedTextField(
+            value = neighborhood,
+            onValueChange = onNeighborhoodChange,
+            label = { Text("Colonia/Barrio") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
+            placeholder = { Text("Centro") }
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = zip,
+                onValueChange = onZipChange,
+                label = { Text("Código postal") },
+                isError = validationResult.zipError != null,
+                supportingText = {
+                    validationResult.zipError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    } ?: if (zip.isNotEmpty()) {
+                        Text("${zip.length}/5 dígitos", color = Color.Gray)
+                    } else {
+                        null
+                    }
+                },
+                modifier = Modifier.weight(0.4f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
+                placeholder = { Text("12345") }
+            )
+
+            OutlinedTextField(
+                value = city,
+                onValueChange = onCityChange,
+                label = { Text("Ciudad") },
+                modifier = Modifier.weight(0.6f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
+                placeholder = { Text("Ciudad de México") }
+            )
+        }
+
+        OutlinedTextField(
+            value = country,
+            onValueChange = onCountryChange,
+            label = { Text("País") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(
+                onDone = { focusManager.clearFocus() }
+            ),
+            placeholder = { Text("México") }
+        )
+
+        validationResult.addressError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AdditionalInfoStep(
+    taxName: String,
+    taxId: String,
+    zone: String,
+    zonas: List<String>,
+    expandedZonas: Boolean,
+    isNew: Boolean,
+    active: Boolean,
+    onTaxNameChange: (String) -> Unit,
+    onTaxIdChange: (String) -> Unit,
+    onZoneChange: (String) -> Unit,
+    onExpandedZonasChange: (Boolean) -> Unit,
+    onIsNewChange: (Boolean) -> Unit,
+    onActiveChange: (Boolean) -> Unit,
+    validationResult: SucursalValidationResult
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Sucursal nueva",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Text(
+                            text = "Marcar si es una sucursal nueva",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                    Switch(
+                        checked = isNew,
+                        onCheckedChange = onIsNewChange,
+                        colors = SwitchDefaults.colors(checkedThumbColor = AppColors.Primary)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Activa",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Text(
+                            text = "Si la sucursal está activa",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                    Switch(
+                        checked = active,
+                        onCheckedChange = onActiveChange,
+                        colors = SwitchDefaults.colors(checkedThumbColor = AppColors.Primary)
+                    )
+                }
+            }
+        }
+
+        OutlinedTextField(
+            value = taxName,
+            onValueChange = onTaxNameChange,
+            label = { Text("Razón social") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            placeholder = { Text("Empresa S.A. de C.V.") }
+        )
+
+        OutlinedTextField(
+            value = taxId,
+            onValueChange = onTaxIdChange,
+            label = { Text("RFC") },
+            isError = validationResult.taxIdError != null,
+            supportingText = {
+                validationResult.taxIdError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            placeholder = { Text("XAXX010101000") }
+        )
+
+        Box(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = zone,
+                onValueChange = {},
+                label = { Text("Zona") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                readOnly = true,
+                trailingIcon = {
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Desplegar zonas")
+                },
+                placeholder = { Text("Selecciona una zona") }
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .alpha(0f)
+                    .clickable { onExpandedZonasChange(true) }
+            )
+        }
+
+        // Menú desplegable de zonas
+        DropdownMenu(
+            expanded = expandedZonas,
+            onDismissRequest = { onExpandedZonasChange(false) },
+            modifier = Modifier.fillMaxWidth(0.9f)
+        ) {
+            zonas.forEach { zonaItem ->
+                DropdownMenuItem(
+                    text = { Text(if (zonaItem.isEmpty()) "Sin zona" else zonaItem) },
+                    onClick = {
+                        onZoneChange(zonaItem)
+                        onExpandedZonasChange(false)
+                    }
+                )
+            }
+        }
     }
 }
