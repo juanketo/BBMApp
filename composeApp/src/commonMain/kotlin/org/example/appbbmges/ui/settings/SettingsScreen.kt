@@ -24,7 +24,7 @@ import org.example.appbbmges.ui.settings.registationex.AddNewDisciplinaScreen
 import org.example.appbbmges.ui.settings.registationex.AddNewPromoScreen
 import org.example.appbbmges.ui.settings.registationex.AddNivelScreen
 import org.example.appbbmges.ui.settings.registationex.AddProductoScreen
-import org.example.appbbmges.ui.settings.registationex.AddSucursalScreen
+import org.example.appbbmges.ui.settings.registationex.formularionewsucursales.AddSucursalScreen
 import org.example.appbbmges.ui.settings.registationex.AddCuotasScreen
 import org.example.appbbmges.ui.settings.registationex.AddSalonScreen
 

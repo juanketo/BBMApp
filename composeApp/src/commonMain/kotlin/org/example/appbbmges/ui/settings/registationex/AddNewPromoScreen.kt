@@ -256,7 +256,7 @@ fun AddNewPromoScreen(onDismiss: () -> Unit, repository: Repository) {
                         if (currentStep != PromoFormStep.PERSONAL_INFO) {
                             OutlinedButton(
                                 onClick = {
-                                    currentStep = PromoFormStep.values()[currentStep.ordinal - 1]
+                                    currentStep = PromoFormStep.entries.toTypedArray()[currentStep.ordinal - 1]
                                 },
                                 modifier = Modifier.width(110.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = AppColors.Primary)

@@ -301,7 +301,7 @@ private fun PreciosBaseList(
                         Text("Precio", fontWeight = FontWeight.Bold, color = AppColors.Primary, modifier = Modifier.weight(1f))
                         Text("Acciones", fontWeight = FontWeight.Bold, color = AppColors.Primary, modifier = Modifier.weight(1f))
                     }
-                    Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+                    HorizontalDivider(thickness = 1.dp, color = Color(0xFFF0F0F0))
                 }
                 items(precios) { cuota ->
                     Row(
@@ -321,7 +321,7 @@ private fun PreciosBaseList(
                         }
                     }
                     if (cuota != precios.last()) {
-                        Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+                        HorizontalDivider(thickness = 1.dp, color = Color(0xFFF0F0F0))
                     }
                 }
             }
@@ -369,7 +369,7 @@ private fun InscripcionesList(
                         Text("Precio", fontWeight = FontWeight.Bold, color = AppColors.Primary, modifier = Modifier.weight(1f))
                         Text("Acciones", fontWeight = FontWeight.Bold, color = AppColors.Primary, modifier = Modifier.weight(1f))
                     }
-                    Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+                    HorizontalDivider(thickness = 1.dp, color = Color(0xFFF0F0F0))
                 }
                 items(inscripciones) { inscripcion ->
                     Row(
@@ -389,7 +389,7 @@ private fun InscripcionesList(
                         }
                     }
                     if (inscripcion != inscripciones.last()) {
-                        Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+                        HorizontalDivider(thickness = 1.dp, color = Color(0xFFF0F0F0))
                     }
                 }
             }
@@ -438,7 +438,7 @@ private fun MembresiasList(
                         Text("Ahorro", fontWeight = FontWeight.Bold, color = AppColors.Primary, modifier = Modifier.weight(1f))
                         Text("Acciones", fontWeight = FontWeight.Bold, color = AppColors.Primary, modifier = Modifier.weight(1f))
                     }
-                    Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+                    HorizontalDivider(thickness = 1.dp, color = Color(0xFFF0F0F0))
                 }
                 items(memberships) { membership ->
                     Row(
@@ -459,7 +459,7 @@ private fun MembresiasList(
                         }
                     }
                     if (membership != memberships.last()) {
-                        Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+                        HorizontalDivider(thickness = 1.dp, color = Color(0xFFF0F0F0))
                     }
                 }
             }
