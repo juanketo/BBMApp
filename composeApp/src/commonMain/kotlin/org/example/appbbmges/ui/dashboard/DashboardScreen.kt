@@ -47,24 +47,21 @@ fun DashboardScreen(navController: SimpleNavController, repository: Repository) 
     var maleCount by remember { mutableStateOf(0L) }
     var femaleCount by remember { mutableStateOf(0L) }
 
-    // Coroutine scope para refrescar datos
+
     val coroutineScope = rememberCoroutineScope()
 
-    // Función para refrescar todos los conteos
     fun refreshCounts() {
         coroutineScope.launch {
             studentCount = repository.getStudentCount()
             teacherCount = repository.getTeacherCount()
             activeBranchesCount = repository.getActiveBranchesCount()
 
-            // Obtener conteos reales de género
             val genders = repository.getStudentsByGender()
             maleCount = genders.first
             femaleCount = genders.second
         }
     }
 
-    // Cargar los datos al iniciar
     LaunchedEffect(Unit) {
         refreshCounts()
     }

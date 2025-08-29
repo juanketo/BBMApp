@@ -189,7 +189,6 @@ private fun FormActionButtons(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Botón Cancelar
         ActionButton(
             text = "Cancelar",
             onClick = onDismiss,
@@ -198,7 +197,6 @@ private fun FormActionButtons(
             modifier = Modifier.weight(1f)
         )
 
-        // Botón Atrás (condicional)
         if (formManager.canGoBack()) {
             ActionButton(
                 text = "Atrás",
