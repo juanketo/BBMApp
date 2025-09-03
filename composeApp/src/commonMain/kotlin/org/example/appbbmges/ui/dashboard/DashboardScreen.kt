@@ -31,12 +31,15 @@ import kotlin.math.PI
 import kotlin.math.atan2
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.style.TextAlign
 import org.example.appbbmges.data.Repository
-import kotlin.math.cos
-import kotlin.math.sin
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.ui.text.style.TextOverflow
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import org.example.appbbmges.StudentEntity
 
 @Composable
 fun DashboardScreen(navController: SimpleNavController, repository: Repository) {
@@ -46,7 +49,6 @@ fun DashboardScreen(navController: SimpleNavController, repository: Repository) 
     var activeBranchesCount by remember { mutableStateOf(0L) }
     var maleCount by remember { mutableStateOf(0L) }
     var femaleCount by remember { mutableStateOf(0L) }
-
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -219,20 +221,88 @@ fun DashboardScreen(navController: SimpleNavController, repository: Repository) 
             EmptyCard(
                 modifier = Modifier.weight(2f).fillMaxHeight()
             ) {
-                BirthdayContent()
+                BirthdayContent(repository = repository)
             }
         }
     }
 }
 
 @Composable
-fun BirthdayContent() {
+fun BirthdayContent(repository: Repository) {
+    val coroutineScope = rememberCoroutineScope()
+    var birthdayStudents by remember { mutableStateOf<List<StudentEntity>>(emptyList()) }
+
+    fun loadBirthdayStudents() {
+        coroutineScope.launch {
+            // Obtener todos los estudiantes activos
+            val allStudents = repository.getAllStudents().filter { it.active == 1L }
+
+            // Obtener el mes actual
+            val currentMonth = Clock.System.now()
+                .toLocalDateTime(TimeZone.currentSystemDefault())
+                .monthNumber
+
+            // Filtrar estudiantes que cumplen años este mes
+            birthdayStudents = allStudents.filter { student ->
+                student.birth_date?.let { birthDate ->
+                    when {
+                        // Formato DD/MM/YYYY (como 01/09/2017)
+                        birthDate.contains("/") -> {
+                            val parts = birthDate.split("/")
+                            if (parts.size >= 2) {
+                                try {
+                                    parts[1].toInt() == currentMonth
+                                } catch (_: Exception) { false }
+                            } else false
+                        }
+                        // Formato YYYY-MM-DD (como 2017-09-01)
+                        birthDate.contains("-") -> {
+                            val parts = birthDate.split("-")
+                            if (parts.size >= 2 && parts[0].length == 4) {
+                                try {
+                                    parts[1].toInt() == currentMonth
+                                } catch (_: Exception) { false }
+                            } else false
+                        }
+                        else -> false
+                    }
+                } ?: false
+            }.sortedBy { student ->
+                // Ordenar por día del mes
+                student.birth_date?.let { birthDate ->
+                    try {
+                        when {
+                            birthDate.contains("/") -> birthDate.split("/")[0].toInt()
+                            birthDate.contains("-") -> {
+                                val parts = birthDate.split("-")
+                                if (parts[0].length == 4) parts[2].toInt() else parts[0].toInt()
+                            }
+                            else -> 0
+                        }
+                    } catch (_: Exception) { 0 }
+                } ?: 0
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        loadBirthdayStudents()
+    }
+
+    // Refrescar cada 30 segundos
+    LaunchedEffect(repository) {
+        while (true) {
+            kotlinx.coroutines.delay(30000)
+            loadBirthdayStudents()
+        }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Cumpleaños",
+            text = "Cumpleaños del Mes",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = Color.Black,
@@ -244,159 +314,140 @@ fun BirthdayContent() {
                 .fillMaxWidth()
                 .weight(1f)
                 .clip(RoundedCornerShape(12.dp))
-                .background(
-                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFFFFC1CC),
-                            Color(0xFFFFB6C1),
-                            Color(0xFFFFA0B4)
-                        )
-                    )
-                )
+                .background(Color.White)
+                .border(1.dp, Color(0xFF800080), RoundedCornerShape(12.dp))
                 .padding(16.dp)
         ) {
-            DecorativeFlowers()
-
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "Feliz Cumpleaños",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color(0xFFE91E63),
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        shadow = Shadow(
-                            color = Color(0x40000000),
-                            offset = Offset(2f, 2f),
-                            blurRadius = 4f
-                        )
-                    ),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                        .border(3.dp, Color(0xFFE91E63), CircleShape)
-                        .padding(4.dp),
-                    contentAlignment = Alignment.Center
+            if (birthdayStudents.isEmpty()) {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Face,
-                        contentDescription = "Bebé",
-                        modifier = Modifier.size(40.dp),
-                        tint = Color(0xFFE91E63)
+                        imageVector = Icons.Outlined.Cake,
+                        contentDescription = "No hay cumpleaños",
+                        modifier = Modifier.size(48.dp),
+                        tint = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "No hay cumpleaños este mes",
+                        fontSize = 16.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
                     )
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Ana Luisa Galvan Ruiz",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2E2E2E),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.titleMedium
-                )
-
-                Text(
-                    text = "25 de Agosto de 2008",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF4A4A4A),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+            } else {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxHeight()
+                ) {
+                    items(birthdayStudents.size) { index ->
+                        BirthdayItem(birthdayStudents[index])
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun DecorativeFlowers() {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val flowerSize = 20.dp.toPx()
-        val petalColor = Color(0xFFFFFFFF).copy(alpha = 0.6f)
-        val centerColor = Color(0xFFE91E63).copy(alpha = 0.8f)
-
-        drawFlower(
-            center = Offset(30f, 30f),
-            petalSize = flowerSize * 0.6f,
-            petalColor = petalColor,
-            centerColor = centerColor
+fun BirthdayItem(student: StudentEntity) {
+    Column(
+        modifier = Modifier
+            .width(120.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.White)
+            .border(1.dp, Color(0xFF800080), RoundedCornerShape(8.dp))
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .clip(CircleShape)
+                .background(Color.LightGray)
+                .border(2.dp, Color(0xFF800080), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Face,
+                contentDescription = "Avatar",
+                modifier = Modifier.size(40.dp),
+                tint = Color(0xFF800080)
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = buildString {
+                append(student.first_name)
+                student.last_name_paternal?.let { append(" $it") }
+                student.last_name_maternal?.let { append(" $it") }
+            }.trim(),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF2E2E2E),
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
-
-        drawFlower(
-            center = Offset(size.width - 30f, 40f),
-            petalSize = flowerSize * 0.8f,
-            petalColor = petalColor,
-            centerColor = centerColor
-        )
-
-        drawFlower(
-            center = Offset(40f, size.height - 40f),
-            petalSize = flowerSize * 0.7f,
-            petalColor = petalColor,
-            centerColor = centerColor
-        )
-
-        drawFlower(
-            center = Offset(size.width - 40f, size.height - 30f),
-            petalSize = flowerSize * 0.5f,
-            petalColor = petalColor,
-            centerColor = centerColor
-        )
-
-        drawFlower(
-            center = Offset(size.width * 0.8f, size.height * 0.3f),
-            petalSize = flowerSize * 0.4f,
-            petalColor = petalColor,
-            centerColor = centerColor
-        )
-
-        drawFlower(
-            center = Offset(size.width * 0.2f, size.height * 0.7f),
-            petalSize = flowerSize * 0.4f,
-            petalColor = petalColor,
-            centerColor = centerColor
+        Text(
+            text = student.birth_date?.let { formatBirthDate(it) } ?: "Sin fecha",
+            fontSize = 12.sp,
+            color = Color(0xFF4A4A4A),
+            textAlign = TextAlign.Center
         )
     }
 }
 
-fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFlower(
-    center: Offset,
-    petalSize: Float,
-    petalColor: Color,
-    centerColor: Color
-) {
-    for (i in 0..4) {
-        val angle = (i * 72f) * (PI / 180f).toFloat()
-        val petalCenter = Offset(
-            center.x + cos(angle) * petalSize * 0.6f,
-            center.y + sin(angle) * petalSize * 0.6f
-        )
-
-        drawCircle(
-            color = petalColor,
-            radius = petalSize * 0.4f,
-            center = petalCenter
-        )
+fun formatBirthDate(dateStr: String): String {
+    return try {
+        when {
+            // Formato DD/MM/YYYY (como 01/09/2017)
+            dateStr.contains("/") -> {
+                val parts = dateStr.split("/")
+                if (parts.size == 3) {
+                    val day = parts[0]
+                    val month = parts[1]
+                    val year = parts[2]
+                    val monthName = getMonthName(month.toInt())
+                    "$day de $monthName"
+                } else dateStr
+            }
+            // Formato YYYY-MM-DD (como 2017-09-01)
+            dateStr.contains("-") -> {
+                val parts = dateStr.split("-")
+                if (parts.size == 3 && parts[0].length == 4) {
+                    val year = parts[0]
+                    val month = parts[1]
+                    val day = parts[2]
+                    val monthName = getMonthName(month.toInt())
+                    "$day de $monthName"
+                } else dateStr
+            }
+            else -> dateStr
+        }
+    } catch (_: Exception) {
+        dateStr
     }
+}
 
-    drawCircle(
-        color = centerColor,
-        radius = petalSize * 0.3f,
-        center = center
-    )
+fun getMonthName(month: Int): String {
+    return when (month) {
+        1 -> "Enero"
+        2 -> "Febrero"
+        3 -> "Marzo"
+        4 -> "Abril"
+        5 -> "Mayo"
+        6 -> "Junio"
+        7 -> "Julio"
+        8 -> "Agosto"
+        9 -> "Septiembre"
+        10 -> "Octubre"
+        11 -> "Noviembre"
+        12 -> "Diciembre"
+        else -> "Mes $month"
+    }
 }
 
 @Composable
@@ -532,14 +583,6 @@ fun Modifier.clickable(onClick: () -> Unit): Modifier {
             onClick()
         }
     }
-}
-
-fun Color.lighten(fraction: Float): Color {
-    val a = alpha
-    val r = red + (1 - red) * fraction
-    val g = green + (1 - green) * fraction
-    val b = blue + (1 - blue) * fraction
-    return Color(red = r, green = g, blue = b, alpha = a)
 }
 
 @Composable

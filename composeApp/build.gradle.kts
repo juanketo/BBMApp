@@ -78,6 +78,9 @@ kotlin {
             implementation(libs.multiplatform.settings.no.arg)
 
             implementation(libs.vico.multiplatform)
+            implementation(libs.vico.multiplatform.m3)
+            implementation(libs.vico.compose.m3)
+
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)

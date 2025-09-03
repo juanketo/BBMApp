@@ -1019,6 +1019,10 @@ class Repository(private val database: AppDatabaseBaby) {
         return Pair(maleCount, femaleCount)
     }
 
+    fun getStudentsByBirthMonth(month: String): List<StudentEntity> {
+        return database.expensesDbQueries.studentSelectByBirthMonth(month).executeAsList()
+    }
+
     fun initializeData() {
         val existingUsers = getUserCount()
         if (existingUsers == 0L) {

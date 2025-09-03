@@ -1013,3 +1013,9 @@ WHERE id = ?;
 
 paymentCount:
 SELECT COUNT(*) FROM PaymentEntity;
+
+-- Nueva consulta para obtener alumnos por mes de nacimiento
+
+studentSelectByBirthMonth:
+SELECT * FROM StudentEntity
+WHERE strftime('%m', birth_date) = ? AND active = 1;

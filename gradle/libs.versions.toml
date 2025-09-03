@@ -11,7 +11,7 @@ androidx-espresso-core = "3.6.1"
 androidx-lifecycle = "2.8.4"
 
 androidx-test-junit = "1.2.1"
-compose-multiplatform = "1.7.0"
+compose-multiplatform = "1.8.2"
 junit = "4.13.2"
 kotlin = "2.1.0"
 kotlinx-coroutines = "1.10.1"
@@ -32,7 +32,7 @@ uiAndroid = "1.8.0"
 
 
 #Graficas Android iOS Desktop
-vico = "2.1.0"
+vico = "2.1.3"
 coreI18n = "1.0.0"
 
 [libraries]
@@ -81,6 +81,8 @@ androidx-ui-android = { group = "androidx.compose.ui", name = "ui-android", vers
 #Graficas Android iOS Desktop
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqliteJdbc" }
 vico-multiplatform = { group = "com.patrykandpatrick.vico", name = "multiplatform", version.ref = "vico" }
+vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
+vico-multiplatform-m3 = { group = "com.patrykandpatrick.vico", name = "multiplatform-m3", version.ref = "vico" }
 androidx-core-i18n = { group = "androidx.core", name = "core-i18n", version.ref = "coreI18n" }
 
 [plugins]
