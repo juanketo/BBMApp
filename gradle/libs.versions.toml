@@ -1,5 +1,5 @@
 [versions]
-agp = "8.12.2"
+agp = "8.13.0"
 android-compileSdk = "35"
 android-minSdk = "24"
 android-targetSdk = "34"
@@ -21,13 +21,13 @@ materialIconsExtended = "1.7.8"
 
 # SQLDelight y Json
 
-sqldelight = "2.0.2"
-ktor = "3.0.3"
+sqldelight = "2.1.0"
+ktor = "3.2.3"
 settings = "1.2.0"
 dateTime = "0.6.1"
 koin = "4.0.0"
 foundationAndroid = "1.8.0"
-sqliteJdbc = "3.45.2.0"
+sqliteJdbc = "3.50.3.0"
 uiAndroid = "1.8.0"
 
 
