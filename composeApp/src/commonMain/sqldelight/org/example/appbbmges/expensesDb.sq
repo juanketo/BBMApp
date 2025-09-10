@@ -1,5 +1,17 @@
 --expensesDb
 
+-- ============= Direcciones =============
+
+CREATE TABLE AddressEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    street TEXT,
+    number TEXT,
+    neighborhood TEXT,
+    zip TEXT,
+    city TEXT,
+    state TEXT,
+    country TEXT
+);
 
 -- ============= Roles y Usuarios =============
 
@@ -8,6 +20,15 @@ CREATE TABLE RoleEntity (
     name TEXT NOT NULL UNIQUE,
     description TEXT
 );
+
+roleSelectById:
+SELECT * FROM RoleEntity WHERE id = ?;
+
+roleUpdate:
+UPDATE RoleEntity SET name = ?, description = ? WHERE id = ?;
+
+roleCount:
+SELECT COUNT(*) FROM RoleEntity;
 
 roleCreate:
 INSERT INTO RoleEntity (name, description) VALUES (?, ?);
@@ -44,36 +65,6 @@ UPDATE UserEntity SET active = 1, updated_at = ? WHERE id = ?;
 userDeactivate:
 UPDATE UserEntity SET active = 0, updated_at = ? WHERE id = ?;
 
--- Multirol por franquicia
-CREATE TABLE UserRoleEntity (
-    user_id INTEGER NOT NULL REFERENCES UserEntity(id) ON DELETE CASCADE,
-    role_id INTEGER NOT NULL REFERENCES RoleEntity(id) ON DELETE CASCADE,
-    franchise_id INTEGER REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
-    PRIMARY KEY (user_id, role_id, franchise_id)
-);
-
-userRoleAssign:
-INSERT INTO UserRoleEntity (user_id, role_id, franchise_id) VALUES (?, ?, ?);
-
-userRolesByUser:
-SELECT ur.*, r.name AS role_name
-FROM UserRoleEntity ur
-JOIN RoleEntity r ON r.id = ur.role_id
-WHERE ur.user_id = ?;
-
--- ============= Direcciones =============
-
-CREATE TABLE AddressEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    street TEXT,
-    number TEXT,
-    neighborhood TEXT,
-    zip TEXT,
-    city TEXT,
-    state TEXT,
-    country TEXT
-);
-
 -- ============= Franquicias =============
 
 CREATE TABLE FranchiseEntity (
@@ -100,6 +91,23 @@ SELECT * FROM FranchiseEntity;
 
 franchiseDelete:
 DELETE FROM FranchiseEntity WHERE id = ?;
+
+-- Multirol por franquicia
+CREATE TABLE UserRoleEntity (
+    user_id INTEGER NOT NULL REFERENCES UserEntity(id) ON DELETE CASCADE,
+    role_id INTEGER NOT NULL REFERENCES RoleEntity(id) ON DELETE CASCADE,
+    franchise_id INTEGER REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, role_id, franchise_id)
+);
+
+userRoleAssign:
+INSERT INTO UserRoleEntity (user_id, role_id, franchise_id) VALUES (?, ?, ?);
+
+userRolesByUser:
+SELECT ur.*, r.name AS role_name
+FROM UserRoleEntity ur
+JOIN RoleEntity r ON r.id = ur.role_id
+WHERE ur.user_id = ?;
 
 -- ============= Catálogos de Niveles y Disciplinas =============
 
@@ -177,6 +185,51 @@ CREATE TABLE FranchiseTeacherEntity (
 insertFranchiseTeacher:
 INSERT INTO FranchiseTeacherEntity (franchise_id, teacher_id) VALUES (?, ?);
 
+CREATE TABLE TeacherHourlyRateEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    teacher_id INTEGER NOT NULL REFERENCES TeacherEntity(id) ON DELETE CASCADE,
+    franchise_id INTEGER NOT NULL REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
+    rate_cents INTEGER NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
+    created_ts INTEGER NOT NULL
+);
+
+insertTeacherHourlyRate:
+INSERT INTO TeacherHourlyRateEntity (teacher_id, franchise_id, rate_cents, active, created_ts)
+VALUES (?, ?, ?, ?, ?);
+
+getActiveHourlyRateByTeacher:
+SELECT * FROM TeacherHourlyRateEntity
+WHERE teacher_id = ? AND franchise_id = ? AND active = 1
+ORDER BY created_ts DESC
+LIMIT 1;
+
+deactivateTeacherRates:
+UPDATE TeacherHourlyRateEntity
+SET active = 0
+WHERE teacher_id = ? AND franchise_id = ?;
+
+CREATE TABLE TeacherPaymentEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    teacher_id INTEGER NOT NULL REFERENCES TeacherEntity(id) ON DELETE CASCADE,
+    franchise_id INTEGER NOT NULL REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
+    total_minutes INTEGER NOT NULL,
+    rate_cents INTEGER NOT NULL,
+    total_paid_cents INTEGER NOT NULL,
+    period_label TEXT NOT NULL,
+    paid_ts INTEGER NOT NULL,
+    notes TEXT
+);
+
+insertTeacherPayment:
+INSERT INTO TeacherPaymentEntity (teacher_id, franchise_id, total_minutes, rate_cents, total_paid_cents, period_label, paid_ts, notes)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+getPaymentsByTeacher:
+SELECT * FROM TeacherPaymentEntity
+WHERE teacher_id = ?
+ORDER BY paid_ts DESC;
+
 -- Administrativos / Franquiciatarios
 CREATE TABLE AdministrativeEntity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -194,6 +247,25 @@ CREATE TABLE AdministrativeEntity (
 administrativesByFranchise:
 SELECT * FROM AdministrativeEntity WHERE franchise_id = ?;
 
+-- ============= Familias =============
+
+CREATE TABLE FamilyEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    responsible_adult_name TEXT NOT NULL,
+    phone TEXT,
+    email TEXT
+);
+
+familyCreate:
+INSERT INTO FamilyEntity (responsible_adult_name, phone, email)
+VALUES (?, ?, ?);
+
+familySelectAll:
+SELECT * FROM FamilyEntity;
+
+familyDeleteById:
+DELETE FROM FamilyEntity WHERE id = ?;
+
 -- ============= Alumnos =============
 
 CREATE TABLE StudentEntity (
@@ -210,6 +282,31 @@ CREATE TABLE StudentEntity (
     address_id INTEGER REFERENCES AddressEntity(id) ON DELETE SET NULL,
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1))
 );
+
+CREATE TABLE StudentFamilyEntity (
+    student_id INTEGER NOT NULL REFERENCES StudentEntity(id) ON DELETE CASCADE,
+    family_id INTEGER NOT NULL REFERENCES FamilyEntity(id) ON DELETE CASCADE,
+    PRIMARY KEY (student_id, family_id)
+);
+
+assignStudentToFamily:
+INSERT INTO StudentFamilyEntity (student_id, family_id)
+VALUES (?, ?);
+
+getFamilyByStudent:
+SELECT f.*
+FROM FamilyEntity f
+JOIN StudentFamilyEntity sf ON sf.family_id = f.id
+WHERE sf.student_id = ?;
+
+getSiblingsByStudentId:
+SELECT s.*
+FROM StudentEntity s
+JOIN StudentFamilyEntity sf ON sf.student_id = s.id
+WHERE sf.family_id = (
+    SELECT family_id FROM StudentFamilyEntity WHERE student_id = ?
+)
+AND s.id != ?;
 
 CREATE TABLE StudentAuthorizedAdultEntity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -266,6 +363,24 @@ SELECT s.*
 FROM ScheduleEntity s
 JOIN StudentScheduleEntity ss ON ss.schedule_id = s.id
 WHERE ss.student_id = ?;
+
+CREATE TABLE ClassAttendanceEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    schedule_id INTEGER NOT NULL REFERENCES ScheduleEntity(id) ON DELETE CASCADE,
+    teacher_id INTEGER NOT NULL REFERENCES TeacherEntity(id) ON DELETE CASCADE,
+    date_ts INTEGER NOT NULL,
+    duration_minutes INTEGER NOT NULL,
+    validated INTEGER NOT NULL DEFAULT 0 CHECK (validated IN (0,1))
+);
+
+insertClassAttendance:
+INSERT INTO ClassAttendanceEntity (schedule_id, teacher_id, date_ts, duration_minutes, validated)
+VALUES (?, ?, ?, ?, ?);
+
+getAttendanceByTeacherAndPeriod:
+SELECT * FROM ClassAttendanceEntity
+WHERE teacher_id = ?
+  AND date_ts BETWEEN ? AND ?;
 
 -- ============= Inventario =============
 
@@ -387,6 +502,9 @@ CREATE TABLE TeacherReportEntity (
     observation TEXT
 );
 
+teacherReportsByTeacher:
+SELECT * FROM TeacherReportEntity WHERE teacher_id = ?;
+
 CREATE TABLE TrialClassEntity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     franchise_id INTEGER NOT NULL REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
@@ -407,8 +525,6 @@ CREATE TABLE TrialClassEntity (
     classroom_id INTEGER,
     teacher_id INTEGER
 );
-teacherReportsByTeacher:
-SELECT * FROM TeacherReportEntity WHERE teacher_id = ?;
 
 trialClassesByFranchise:
 SELECT * FROM TrialClassEntity WHERE franchise_id = ?;

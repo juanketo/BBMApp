@@ -43,7 +43,7 @@ import org.example.appbbmges.StudentEntity
 
 @Composable
 fun DashboardScreen(navController: SimpleNavController, repository: Repository) {
-    // Obtener los datos del Repository
+
     var studentCount by remember { mutableStateOf(0L) }
     var teacherCount by remember { mutableStateOf(0L) }
     var activeBranchesCount by remember { mutableStateOf(0L) }
@@ -237,7 +237,6 @@ fun BirthdayContent(repository: Repository) {
             // Obtener todos los estudiantes activos
             val allStudents = repository.getAllStudents().filter { it.active == 1L }
 
-            // Obtener el mes actual
             val currentMonth = Clock.System.now()
                 .toLocalDateTime(TimeZone.currentSystemDefault())
                 .monthNumber
@@ -246,7 +245,6 @@ fun BirthdayContent(repository: Repository) {
             birthdayStudents = allStudents.filter { student ->
                 student.birth_date?.let { birthDate ->
                     when {
-                        // Formato DD/MM/YYYY (como 01/09/2017)
                         birthDate.contains("/") -> {
                             val parts = birthDate.split("/")
                             if (parts.size >= 2) {
@@ -289,7 +287,6 @@ fun BirthdayContent(repository: Repository) {
         loadBirthdayStudents()
     }
 
-    // Refrescar cada 30 segundos
     LaunchedEffect(repository) {
         while (true) {
             kotlinx.coroutines.delay(30000)

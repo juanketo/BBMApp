@@ -87,7 +87,6 @@ fun LoginScreen(
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
-
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -102,7 +101,7 @@ fun LoginScreen(
         try {
             val user = userRepository.getUserByUsername(username)
 
-            if (user != null && user.password == password) {
+            if (user != null && user.password_hash == password) {
                 loginState = LoginState.Success
                 navController.navigateTo(Screen.Dashboard(username))
             } else {

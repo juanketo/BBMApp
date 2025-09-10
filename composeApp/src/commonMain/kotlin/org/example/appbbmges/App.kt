@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
@@ -236,7 +237,7 @@ fun CustomHeaderRight(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Logout,
+                                    imageVector = Icons.AutoMirrored.Outlined.Logout,
                                     contentDescription = "Cerrar Sesión",
                                     tint = Color(0xFFD32F2F),
                                     modifier = Modifier.size(20.dp)
