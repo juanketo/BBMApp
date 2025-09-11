@@ -156,13 +156,11 @@ fun AddNivelScreen(
                 formState = NivelFormState.Loading
                 try {
                     if (withoutGrade) {
-                        // Crear solo el nivel sin grado
-                        repository.insertLevel(new_level)
+                        repository.createLevel(new_level)
                     } else {
-                        // Crear un registro para cada grado seleccionado
                         selectedGrades.forEach { grade ->
                             val levelName = buildLevelName(new_level, grade)
-                            repository.insertLevel(levelName)
+                            repository.createLevel(levelName)
                         }
                     }
                     formState = NivelFormState.Success

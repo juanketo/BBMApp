@@ -36,6 +36,7 @@ import org.example.appbbmges.UserEntity
 import org.example.appbbmges.UserRoleEntity
 import org.example.appbbmges.UserRolesByUser
 import org.example.appbbmges.FranchiseDisciplineByFranchise
+import org.example.appbbmges.FranchiseWithAddress
 import org.example.appbbmges.InventoryByFranchise
 
 class Repository(private val database: AppDatabaseBaby) {
@@ -315,6 +316,128 @@ class Repository(private val database: AppDatabaseBaby) {
     fun getTrialClassesByFranchise(franchiseId: Long): List<TrialClassEntity> {
         return database.expensesDbQueries.trialClassesByFranchise(franchiseId).executeAsList()
     }
+
+    fun getAllPreciosBase(): List<PrecioBaseEntity> {
+        return database.expensesDbQueries.selectAllPrecioBase().executeAsList()
+    }
+
+    fun deletePrecioBase(id: Long) {
+        database.expensesDbQueries.deletePrecioBase(id)
+    }
+
+    fun getAllInscriptions(): List<InscriptionEntity> {
+        return database.expensesDbQueries.selectAllInscription().executeAsList()
+    }
+
+    fun deleteInscription(id: Long) {
+        database.expensesDbQueries.deleteInscription(id)
+    }
+
+    fun getAllMemberships(): List<MembershipEntity> {
+        return database.expensesDbQueries.selectAllMembership().executeAsList()
+    }
+
+    fun deleteMembership(id: Long) {
+        database.expensesDbQueries.deleteMembership(id)
+    }
+
+    fun getAllFranchisesWithAddress(): List<FranchiseWithAddress> {
+        return database.expensesDbQueries.franchiseWithAddress().executeAsList()
+    }
+
+    // ============= PROMOCIONES =============
+    fun insertPromotion(
+        name: String,
+        startTs: Long,
+        endTs: Long,
+        discountType: String,
+        percentDiscount: Long?,
+        amountCents: Long?,
+        franchiseId: Long?,
+        applicableToNew: Long,
+        applicableToActive: Long
+    ) {
+        database.expensesDbQueries.promotionCreate(
+            name, startTs, endTs, discountType,
+            percentDiscount, amountCents, franchiseId,
+            applicableToNew, applicableToActive
+        )
+    }
+
+    // ============= ITEMS BOUTIQUE =============
+    fun getBoutiqueItemByCode(code: String): BoutiqueItemEntity? {
+        return database.expensesDbQueries.getBoutiqueItemByCode(code).executeAsOneOrNull()
+    }
+
+    fun insertBoutiqueItem(
+        description: String,
+        code: String,
+        line: String?,
+        franchisePrice: Double?,
+        suggestedPrice: Double?,
+        country: String?
+    ) {
+        val franchisePriceCents = franchisePrice?.times(100)?.toLong() ?: 0L
+        val suggestedPriceCents = suggestedPrice?.times(100)?.toLong() ?: 0L
+
+        database.expensesDbQueries.boutiqueItemCreate(
+            description, code, line, franchisePriceCents, suggestedPriceCents, country
+        )
+    }
+
+    fun insertDisciplinesWithLevelsBatch(baseName: String, levelIds: List<Long>): List<Pair<String, Long>> {
+        val failedInsertions = mutableListOf<Pair<String, Long>>()
+
+        levelIds.forEach { levelId ->
+            try {
+                val level = database.expensesDbQueries.levelSelectById(levelId).executeAsOneOrNull()
+                if (level != null) {
+                    val fullName = "$baseName ${level.name}".trim()
+                    database.expensesDbQueries.disciplineCreate(fullName, levelId)
+                }
+            } catch (e: Exception) {
+                val level = database.expensesDbQueries.levelSelectById(levelId).executeAsOneOrNull()
+                if (level != null) {
+                    val fullName = "$baseName ${level.name}".trim()
+                    failedInsertions.add(Pair(fullName, levelId))
+                }
+            }
+        }
+
+        return failedInsertions
+    }
+
+
+    // ============= DASHBOARD HELPERS =============
+
+    fun getStudentCount(): Long {
+        return database.expensesDbQueries.studentCount().executeAsOne()
+    }
+
+    fun getTeacherCount(): Long {
+        return database.expensesDbQueries.teacherCount().executeAsOne()
+    }
+
+    fun getActiveBranchesCount(): Long {
+        return database.expensesDbQueries.activeFranchisesCount().executeAsOne()
+    }
+
+    fun getAllStudents(): List<StudentEntity> {
+        return database.expensesDbQueries.selectAllStudents().executeAsList()
+    }
+
+    fun getStudentsByGender(): Pair<Long, Long> {
+        val students = database.expensesDbQueries
+            .selectAllStudents()
+            .executeAsList()
+
+        val maleCount = students.count { it.curp?.getOrNull(10) == 'H' }.toLong()
+        val femaleCount = students.count { it.curp?.getOrNull(10) == 'M' }.toLong()
+
+        return Pair(maleCount, femaleCount)
+    }
+
+
 
     fun initializeData() {
         val existingRoles = getRoleCount()

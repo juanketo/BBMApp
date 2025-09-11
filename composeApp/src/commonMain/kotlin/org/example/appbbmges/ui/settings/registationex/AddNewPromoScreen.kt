@@ -21,6 +21,28 @@ import appbbmges.composeapp.generated.resources.logoSystem
 import org.example.appbbmges.data.Repository
 import org.example.appbbmges.ui.usuarios.AppColors
 import org.jetbrains.compose.resources.painterResource
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.Clock
+
+fun convertDateToTimestamp(dateString: String): Long {
+    return try {
+        val parts = dateString.split("/")
+        if (parts.size == 3) {
+            val day = parts[0].toInt()
+            val month = parts[1].toInt()
+            val year = parts[2].toInt()
+
+            val localDate = LocalDate(year, month, day)
+            localDate.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
+        } else {
+            Clock.System.now().toEpochMilliseconds()
+        }
+    } catch (e: Exception) {
+        Clock.System.now().toEpochMilliseconds()
+    }
+}
 
 data class PromoData(
     val name: String,
@@ -46,7 +68,7 @@ fun AddNewPromoScreen(onDismiss: () -> Unit, repository: Repository) {
     var name by remember { mutableStateOf("") }
     var start_date by remember { mutableStateOf("") }
     var end_date by remember { mutableStateOf("") }
-    var discount_type by remember { mutableStateOf("") }
+    var discount_type by remember { mutableStateOf("PERCENT") }
     var discount_value by remember { mutableStateOf("") }
     var applicable_to_new by remember { mutableStateOf(false) }
     var applicable_to_active by remember { mutableStateOf(false) }
@@ -65,7 +87,8 @@ fun AddNewPromoScreen(onDismiss: () -> Unit, repository: Repository) {
     }
 
     fun validateDetailInfo(): Boolean {
-        return true // Validación simple por ahora
+        return start_date.isNotEmpty() && end_date.isNotEmpty() &&
+                discount_type.isNotEmpty() && discount_value.isNotEmpty()
     }
 
     fun validateAdditionalInfo(): Boolean {
@@ -123,7 +146,10 @@ fun AddNewPromoScreen(onDismiss: () -> Unit, repository: Repository) {
                     LinearProgressIndicator(
                         progress = {
                             when (currentStep) {
-                                PromoFormStep.PERSONAL_INFO -> 0.2f; PromoFormStep.DETAIL_INFO -> 0.4f; PromoFormStep.ADDITIONAL_INFO -> 0.8f; PromoFormStep.CONFIRMATION -> 1.0f
+                                PromoFormStep.PERSONAL_INFO -> 0.2f
+                                PromoFormStep.DETAIL_INFO -> 0.4f
+                                PromoFormStep.ADDITIONAL_INFO -> 0.8f
+                                PromoFormStep.CONFIRMATION -> 1.0f
                             }
                         },
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -131,7 +157,10 @@ fun AddNewPromoScreen(onDismiss: () -> Unit, repository: Repository) {
                     )
                     Text(
                         when (currentStep) {
-                            PromoFormStep.PERSONAL_INFO -> "Datos Básicos"; PromoFormStep.DETAIL_INFO -> "Detalles"; PromoFormStep.ADDITIONAL_INFO -> "Aplicabilidad"; PromoFormStep.CONFIRMATION -> "Confirmación"
+                            PromoFormStep.PERSONAL_INFO -> "Datos Básicos"
+                            PromoFormStep.DETAIL_INFO -> "Detalles"
+                            PromoFormStep.ADDITIONAL_INFO -> "Aplicabilidad"
+                            PromoFormStep.CONFIRMATION -> "Confirmación"
                         },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
@@ -155,49 +184,88 @@ fun AddNewPromoScreen(onDismiss: () -> Unit, repository: Repository) {
                                 value = start_date,
                                 onValueChange = { start_date = it },
                                 label = { Text("Fecha Inicio (dd/mm/aaaa)") },
-                                modifier = Modifier.fillMaxWidth()
+                                placeholder = { Text("01/01/2024") },
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                             )
                             OutlinedTextField(
                                 value = end_date,
                                 onValueChange = { end_date = it },
                                 label = { Text("Fecha Fin (dd/mm/aaaa)") },
-                                modifier = Modifier.fillMaxWidth()
+                                placeholder = { Text("31/12/2024") },
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                             )
-                            OutlinedTextField(
-                                value = discount_type,
-                                onValueChange = { discount_type = it },
-                                label = { Text("Tipo de Descuento") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
+
+                            // Dropdown para tipo de descuento
+                            var expanded by remember { mutableStateOf(false) }
+                            ExposedDropdownMenuBox(
+                                expanded = expanded,
+                                onExpandedChange = { expanded = !expanded },
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = if (discount_type == "PERCENT") "Porcentaje" else "Monto fijo",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Tipo de Descuento") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                    modifier = Modifier.menuAnchor()
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Porcentaje") },
+                                        onClick = {
+                                            discount_type = "PERCENT"
+                                            expanded = false
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Monto fijo") },
+                                        onClick = {
+                                            discount_type = "AMOUNT"
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+
                             OutlinedTextField(
                                 value = discount_value,
                                 onValueChange = { discount_value = it },
-                                label = { Text("Valor Descuento") },
+                                label = { Text(if (discount_type == "PERCENT") "Porcentaje (%)" else "Monto en centavos") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
 
                         PromoFormStep.ADDITIONAL_INFO -> {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            ) {
                                 Checkbox(
                                     checked = applicable_to_new,
                                     onCheckedChange = { applicable_to_new = it },
                                     colors = CheckboxDefaults.colors(checkedColor = AppColors.Primary)
                                 )
                                 Text(
-                                    "Aplicable a nuevos",
+                                    "Aplicable a nuevos estudiantes",
                                     modifier = Modifier.padding(start = 4.dp)
                                 )
                             }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            ) {
                                 Checkbox(
                                     checked = applicable_to_active,
                                     onCheckedChange = { applicable_to_active = it },
                                     colors = CheckboxDefaults.colors(checkedColor = AppColors.Primary)
                                 )
                                 Text(
-                                    "Aplicable a activos",
+                                    "Aplicable a estudiantes activos",
                                     modifier = Modifier.padding(start = 4.dp)
                                 )
                             }
@@ -212,31 +280,39 @@ fun AddNewPromoScreen(onDismiss: () -> Unit, repository: Repository) {
                                     Text(
                                         "Datos Básicos",
                                         style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(bottom = 4.dp)
                                     )
-                                    Text("Nombre: $name")
+                                    Text("Nombre: $name", modifier = Modifier.padding(bottom = 8.dp))
+
                                     Text(
                                         "Detalles",
                                         style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(bottom = 4.dp)
                                     )
-                                    Text("Fecha Inicio: $start_date")
-                                    Text("Fecha Fin: $end_date")
-                                    Text("Tipo Descuento: $discount_type")
-                                    Text("Valor Descuento: $discount_value")
+                                    Text("Fecha Inicio: $start_date", modifier = Modifier.padding(bottom = 2.dp))
+                                    Text("Fecha Fin: $end_date", modifier = Modifier.padding(bottom = 2.dp))
+                                    Text("Tipo Descuento: ${if (discount_type == "PERCENT") "Porcentaje" else "Monto fijo"}", modifier = Modifier.padding(bottom = 2.dp))
+                                    Text("Valor Descuento: $discount_value${if (discount_type == "PERCENT") "%" else " centavos"}", modifier = Modifier.padding(bottom = 8.dp))
+
                                     Text(
                                         "Aplicabilidad",
                                         style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(bottom = 4.dp)
                                     )
-                                    Text("Aplicable a nuevos: ${if (applicable_to_new) "Sí" else "No"}")
+                                    Text("Aplicable a nuevos: ${if (applicable_to_new) "Sí" else "No"}", modifier = Modifier.padding(bottom = 2.dp))
                                     Text("Aplicable a activos: ${if (applicable_to_active) "Sí" else "No"}")
                                 }
                             }
-                            if (formError != null) Text(
-                                formError!!,
-                                color = MaterialTheme.colorScheme.error
-                            )
+                            if (formError != null) {
+                                Text(
+                                    formError!!,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
+                            }
                         }
                     }
 
@@ -253,6 +329,7 @@ fun AddNewPromoScreen(onDismiss: () -> Unit, repository: Repository) {
                         ) {
                             Text("Cancelar")
                         }
+
                         if (currentStep != PromoFormStep.PERSONAL_INFO) {
                             OutlinedButton(
                                 onClick = {
@@ -264,32 +341,45 @@ fun AddNewPromoScreen(onDismiss: () -> Unit, repository: Repository) {
                                 Text("Anterior")
                             }
                         }
+
                         Button(
                             onClick = {
                                 when (currentStep) {
-                                    PromoFormStep.PERSONAL_INFO -> if (validatePersonalInfo()) currentStep =
-                                        PromoFormStep.DETAIL_INFO
+                                    PromoFormStep.PERSONAL_INFO -> {
+                                        if (validatePersonalInfo()) {
+                                            currentStep = PromoFormStep.DETAIL_INFO
+                                        }
+                                    }
+                                    PromoFormStep.DETAIL_INFO -> {
+                                        if (validateDetailInfo()) {
+                                            currentStep = PromoFormStep.ADDITIONAL_INFO
+                                        }
+                                    }
+                                    PromoFormStep.ADDITIONAL_INFO -> {
+                                        if (validateAdditionalInfo()) {
+                                            currentStep = PromoFormStep.CONFIRMATION
+                                        }
+                                    }
+                                    PromoFormStep.CONFIRMATION -> {
+                                        if (validateForm()) {
+                                            val startTs = convertDateToTimestamp(start_date)
+                                            val endTs = convertDateToTimestamp(end_date)
 
-                                    PromoFormStep.DETAIL_INFO -> if (validateDetailInfo()) currentStep =
-                                        PromoFormStep.ADDITIONAL_INFO
-
-                                    PromoFormStep.ADDITIONAL_INFO -> if (validateAdditionalInfo()) currentStep =
-                                        PromoFormStep.CONFIRMATION
-
-                                    PromoFormStep.CONFIRMATION -> if (validateForm()) {
-                                        repository.insertPromotion(
-                                            name,
-                                            start_date,
-                                            end_date,
-                                            discount_type,
-                                            discount_value.toDouble(),
-                                            if (applicable_to_new) 1 else 0,
-                                            if (applicable_to_active) 1 else 0
-                                        )
-                                        onDismiss()
-                                    } else {
-                                        formError =
-                                            "Por favor complete todos los campos obligatorios"
+                                            repository.insertPromotion(
+                                                name = name,
+                                                startTs = startTs,
+                                                endTs = endTs,
+                                                discountType = discount_type,
+                                                percentDiscount = if (discount_type == "PERCENT") discount_value.toLongOrNull() else null,
+                                                amountCents = if (discount_type == "AMOUNT") discount_value.toLongOrNull() else null,
+                                                franchiseId = null, // Puedes agregar lógica para obtener la franquicia actual
+                                                applicableToNew = if (applicable_to_new) 1L else 0L,
+                                                applicableToActive = if (applicable_to_active) 1L else 0L
+                                            )
+                                            onDismiss()
+                                        } else {
+                                            formError = "Por favor complete todos los campos obligatorios"
+                                        }
                                     }
                                 }
                             },

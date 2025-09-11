@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.example.appbbmges.StudentEntity
@@ -68,23 +69,20 @@ fun DashboardScreen(navController: SimpleNavController, repository: Repository) 
         refreshCounts()
     }
 
-    // Refrescar datos periódicamente
     LaunchedEffect(repository) {
         while (true) {
-            kotlinx.coroutines.delay(5000) // Refrescar cada 5 segundos
+            kotlinx.coroutines.delay(5000)
             refreshCounts()
         }
     }
 
-    // Calcular porcentajes reales
     val totalStudents = maleCount + femaleCount
     val malePercentage = if (totalStudents > 0) (maleCount.toFloat() / totalStudents) * 100 else 0f
     val femalePercentage = if (totalStudents > 0) (femaleCount.toFloat() / totalStudents) * 100 else 0f
 
-    // Datos para la gráfica (mostrando "Niños/Niñas" pero con datos reales)
     val genderData = listOf(
-        Pair("Niños", malePercentage),  // Datos de "masculino"
-        Pair("Niñas", femalePercentage) // Datos de "femenino"
+        Pair("Niños", malePercentage),
+        Pair("Niñas", femalePercentage)
     )
 
     Column(
@@ -234,52 +232,27 @@ fun BirthdayContent(repository: Repository) {
 
     fun loadBirthdayStudents() {
         coroutineScope.launch {
-            // Obtener todos los estudiantes activos
             val allStudents = repository.getAllStudents().filter { it.active == 1L }
 
             val currentMonth = Clock.System.now()
                 .toLocalDateTime(TimeZone.currentSystemDefault())
                 .monthNumber
 
-            // Filtrar estudiantes que cumplen años este mes
-            birthdayStudents = allStudents.filter { student ->
-                student.birth_date?.let { birthDate ->
-                    when {
-                        birthDate.contains("/") -> {
-                            val parts = birthDate.split("/")
-                            if (parts.size >= 2) {
-                                try {
-                                    parts[1].toInt() == currentMonth
-                                } catch (_: Exception) { false }
-                            } else false
-                        }
-                        // Formato YYYY-MM-DD (como 2017-09-01)
-                        birthDate.contains("-") -> {
-                            val parts = birthDate.split("-")
-                            if (parts.size >= 2 && parts[0].length == 4) {
-                                try {
-                                    parts[1].toInt() == currentMonth
-                                } catch (_: Exception) { false }
-                            } else false
-                        }
-                        else -> false
-                    }
-                } ?: false
-            }.sortedBy { student ->
-                // Ordenar por día del mes
-                student.birth_date?.let { birthDate ->
-                    try {
-                        when {
-                            birthDate.contains("/") -> birthDate.split("/")[0].toInt()
-                            birthDate.contains("-") -> {
-                                val parts = birthDate.split("-")
-                                if (parts[0].length == 4) parts[2].toInt() else parts[0].toInt()
-                            }
-                            else -> 0
-                        }
-                    } catch (_: Exception) { 0 }
-                } ?: 0
-            }
+            birthdayStudents = allStudents
+                .filter { student ->
+                    student.birth_date_ts?.let { ts ->
+                        val date = Instant.fromEpochMilliseconds(ts)
+                            .toLocalDateTime(TimeZone.currentSystemDefault())
+                        date.monthNumber == currentMonth
+                    } ?: false
+                }
+                .sortedBy { student ->
+                    student.birth_date_ts?.let { ts ->
+                        Instant.fromEpochMilliseconds(ts)
+                            .toLocalDateTime(TimeZone.currentSystemDefault())
+                            .dayOfMonth
+                    } ?: 0
+                }
         }
     }
 
@@ -350,6 +323,17 @@ fun BirthdayContent(repository: Repository) {
 
 @Composable
 fun BirthdayItem(student: StudentEntity) {
+    val birthDateText = student.birth_date_ts?.let { ts ->
+        try {
+            val date = Instant.fromEpochMilliseconds(ts)
+                .toLocalDateTime(TimeZone.currentSystemDefault())
+
+            "${date.dayOfMonth} de ${getMonthName(date.monthNumber)}"
+        } catch (_: Exception) {
+            "Fecha inválida"
+        }
+    } ?: "Sin fecha"
+
     Column(
         modifier = Modifier
             .width(120.dp)
@@ -389,43 +373,11 @@ fun BirthdayItem(student: StudentEntity) {
             overflow = TextOverflow.Ellipsis
         )
         Text(
-            text = student.birth_date?.let { formatBirthDate(it) } ?: "Sin fecha",
+            text = birthDateText,
             fontSize = 12.sp,
             color = Color(0xFF4A4A4A),
             textAlign = TextAlign.Center
         )
-    }
-}
-
-fun formatBirthDate(dateStr: String): String {
-    return try {
-        when {
-            // Formato DD/MM/YYYY (como 01/09/2017)
-            dateStr.contains("/") -> {
-                val parts = dateStr.split("/")
-                if (parts.size == 3) {
-                    val day = parts[0]
-                    val month = parts[1]
-                    val year = parts[2]
-                    val monthName = getMonthName(month.toInt())
-                    "$day de $monthName"
-                } else dateStr
-            }
-            // Formato YYYY-MM-DD (como 2017-09-01)
-            dateStr.contains("-") -> {
-                val parts = dateStr.split("-")
-                if (parts.size == 3 && parts[0].length == 4) {
-                    val year = parts[0]
-                    val month = parts[1]
-                    val day = parts[2]
-                    val monthName = getMonthName(month.toInt())
-                    "$day de $monthName"
-                } else dateStr
-            }
-            else -> dateStr
-        }
-    } catch (_: Exception) {
-        dateStr
     }
 }
 

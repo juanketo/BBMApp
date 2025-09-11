@@ -310,7 +310,7 @@ private fun PreciosBaseList(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(cuota.id.toString(), modifier = Modifier.weight(1f))
-                        Text("$${cuota.precio}", modifier = Modifier.weight(1f))
+                        Text("\$${cuota.precio_cents / 100.0}", modifier = Modifier.weight(1f))
                         Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
                             IconButton(onClick = { onEdit(cuota) }) {
                                 Icon(Icons.Outlined.Edit, contentDescription = "Editar")
@@ -378,7 +378,7 @@ private fun InscripcionesList(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(inscripcion.id.toString(), modifier = Modifier.weight(1f))
-                        Text("$${inscripcion.precio}", modifier = Modifier.weight(1f))
+                        Text("\$${inscripcion.price_cents / 100.0}", modifier = Modifier.weight(1f))
                         Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
                             IconButton(onClick = { onEdit(inscripcion) }) {
                                 Icon(Icons.Outlined.Edit, contentDescription = "Editar")

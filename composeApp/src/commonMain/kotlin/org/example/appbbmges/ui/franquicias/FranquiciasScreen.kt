@@ -13,16 +13,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import org.example.appbbmges.FranchiseEntity
+import org.example.appbbmges.FranchiseWithAddress
 import org.example.appbbmges.navigation.SimpleNavController
 import org.example.appbbmges.data.Repository
 import kotlin.math.roundToInt
@@ -30,12 +28,12 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FranquiciasScreen(navController: SimpleNavController, repository: Repository) {
-    var franquicias by remember { mutableStateOf<List<FranchiseEntity>>(emptyList()) }
+    var franquicias by remember { mutableStateOf<List<FranchiseWithAddress>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         try {
-            franquicias = repository.getAllFranchises()
+            franquicias = repository.getAllFranchisesWithAddress()
         } catch (e: Exception) {
             println("Error cargando franquicias: ${e.message}")
         } finally {
@@ -101,7 +99,7 @@ fun FranquiciasScreen(navController: SimpleNavController, repository: Repository
             } else if (franquicias.isEmpty()) {
                 EmptyState()
             } else {
-                // Grid 2x2 para mostrar las tarjetas
+
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -112,19 +110,19 @@ fun FranquiciasScreen(navController: SimpleNavController, repository: Repository
                         CompactFranquiciaCard(
                             franquicia = franquicia,
                             onEditClick = {
+
                             },
                             onDeleteClick = {
-                                // Eliminar franquicia
                                 try {
                                     repository.deleteFranchise(franquicia.id)
-                                    // Actualizar lista
-                                    franquicias = repository.getAllFranchises()
+                                    franquicias = repository.getAllFranchisesWithAddress()
                                 } catch (e: Exception) {
                                     println("Error eliminando franquicia: ${e.message}")
                                 }
                             }
                         )
                     }
+
                 }
             }
         }
@@ -197,7 +195,7 @@ private fun EmptyState() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompactFranquiciaCard(
-    franquicia: FranchiseEntity,
+    franquicia: FranchiseWithAddress,
     onEditClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {}
 ) {
@@ -359,17 +357,17 @@ fun CompactFranquiciaCard(
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
                         CompactInfoSection(title = "Información Comercial:") {
-                            franquicia.base_price?.let { price ->
-                                CompactInfoItem(
-                                    label = "Precio Base",
-                                    value = "${franquicia.currency ?: "MXN"} ${formatDouble(price)}"
-                                )
-                            }
+                            CompactInfoItem(
+                                label = "Precio Base",
+                                value = "${franquicia.currency ?: "MXN"} ${formatDouble(franquicia.base_price_cents / 100.0)}"
+                            )
+
                             franquicia.zone?.let { zone ->
                                 CompactInfoItem(label = "Zona", value = zone)
                             }
                         }
                     }
+
                 }
 
                 // Información Fiscal con borde lateral
@@ -499,7 +497,6 @@ fun CompactInfoItem(
     )
 }
 
-// Función multiplataforma para formatear números con 2 decimales
 private fun formatDouble(value: Double): String {
     val rounded = (value * 100).roundToInt()
     val integerPart = rounded / 100
@@ -514,7 +511,7 @@ private fun formatDouble(value: Double): String {
 }
 
 // Funciones auxiliares
-private fun hasAddressInfo(franquicia: FranchiseEntity): Boolean {
+private fun hasAddressInfo(franquicia: FranchiseWithAddress): Boolean {
     return franquicia.address_street != null ||
             franquicia.address_number != null ||
             franquicia.address_neighborhood != null ||
@@ -523,7 +520,7 @@ private fun hasAddressInfo(franquicia: FranchiseEntity): Boolean {
             franquicia.address_zip != null
 }
 
-private fun buildAddressString(franquicia: FranchiseEntity): String {
+private fun buildAddressString(franquicia: FranchiseWithAddress): String {
     val addressParts = listOfNotNull(
         franquicia.address_street,
         franquicia.address_number,
