@@ -73,7 +73,7 @@ fun FormInscripcionScreen(
     val isEditing = editingInscripcion != null
 
     var currentStep by remember { mutableStateOf(InscripcionFormStep.FORM) }
-    var precio by remember { mutableStateOf(editingInscripcion?.precio?.toString() ?: "") }
+    var precio by remember { mutableStateOf(editingInscripcion?.let { (it.price_cents.toDouble() / 100).toString() } ?: "") }
     var formState by remember { mutableStateOf<InscripcionFormState>(InscripcionFormState.Idle) }
     var validationResult by remember { mutableStateOf(InscripcionValidationResult(true)) }
 

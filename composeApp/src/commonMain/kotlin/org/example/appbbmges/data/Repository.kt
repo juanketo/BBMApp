@@ -38,6 +38,7 @@ import org.example.appbbmges.UserRolesByUser
 import org.example.appbbmges.FranchiseDisciplineByFranchise
 import org.example.appbbmges.FranchiseWithAddress
 import org.example.appbbmges.InventoryByFranchise
+import org.example.appbbmges.AddressEntity
 
 class Repository(private val database: AppDatabaseBaby) {
 
@@ -214,9 +215,96 @@ class Repository(private val database: AppDatabaseBaby) {
     }
 
     // ============= ADMINISTRATIVOS =============
-    fun getAdministrativesByFranchise(franchiseId: Long): List<AdministrativeEntity> {
-        return database.expensesDbQueries.administrativesByFranchise(franchiseId).executeAsList()
+
+    fun insertFranchisee(
+        franchiseId: Long,
+        firstName: String,
+        lastNamePaternal: String?,
+        lastNameMaternal: String?,
+        gender: String?,
+        birthDate: String?,
+        nationality: String?,
+        taxId: String?,
+        phone: String?,
+        email: String?,
+        addressStreet: String?,
+        addressZip: String?,
+        emergencyContactName: String?,
+        emergencyContactPhone: String?,
+        startDate: String?,
+        active: Long
+    ) {
+        val startTs = Clock.System.now().toEpochMilliseconds()
+
+        val salaryCents = 0L
+
+        createAdministrative(
+            userId = null,
+            franchiseId = franchiseId,
+            firstName = firstName,
+            lastNamePaternal = lastNamePaternal,
+            lastNameMaternal = lastNameMaternal,
+            phone = phone,
+            email = email,
+            position = "Franquiciatario",
+            salaryCents = salaryCents,
+            startTs = startTs,
+            active = active
+        )
     }
+
+    fun insertTeacher(
+        firstName: String,
+        lastNamePaternal: String?,
+        lastNameMaternal: String?,
+        gender: String?,
+        birthDate: String?,
+        nationality: String?,
+        taxId: String?,
+        phone: String?,
+        email: String?,
+        addressStreet: String?,
+        addressZip: String?,
+        emergencyContactName: String?,
+        emergencyContactPhone: String?,
+        salaryPerHour: Double?,
+        startDate: String?,
+        active: Long,
+        vetoed: Long
+    ) {
+        val startTs = Clock.System.now().toEpochMilliseconds()
+        val rateCents = salaryPerHour?.times(100)?.toLong() ?: 0L
+
+        database.expensesDbQueries.teacherCreate(
+            user_id = null,
+            first_name = firstName,
+            last_name_paternal = lastNamePaternal,
+            last_name_maternal = lastNameMaternal,
+            phone = phone,
+            email = email,
+            rfc = taxId,
+            start_ts = startTs,
+            active = active,
+            vetoed = vetoed
+        )
+
+        val teacherId = database.expensesDbQueries.transactionWithResult {
+            database.expensesDbQueries.lastInsertRowId().executeAsOne()
+        }
+
+        if (rateCents > 0L) {
+            database.expensesDbQueries.insertTeacherHourlyRate(
+                teacher_id = teacherId,
+                franchise_id = 1L,
+                rate_cents = rateCents,
+                active = 1L,
+                created_ts = startTs
+            )
+        }
+    }
+
+
+
 
     // ============= FAMILIAS =============
     fun createFamily(responsibleAdultName: String, phone: String?, email: String?) {
@@ -407,6 +495,136 @@ class Repository(private val database: AppDatabaseBaby) {
         return failedInsertions
     }
 
+    // ============= FUNCIONES FALTANTES EN REPOSITORY =============
+
+    fun getAllTeachers(): List<TeacherEntity> {
+        return database.expensesDbQueries.teacherSelectAll().executeAsList()
+    }
+
+    fun getAllAdministratives(): List<AdministrativeEntity> {
+        return database.expensesDbQueries.administrativeSelectAll().executeAsList()
+    }
+
+    // Funciones de eliminación
+    fun deleteStudent(id: Long) {
+        database.expensesDbQueries.studentDelete(id)
+    }
+
+    fun deleteTeacher(id: Long) {
+        database.expensesDbQueries.teacherDelete(id)
+    }
+
+    fun deleteAdministrative(id: Long) {
+        database.expensesDbQueries.administrativeDelete(id)
+    }
+
+// ============= SALONES/AULAS (MÉTODOS FALTANTES) =============
+
+    fun getAllClassrooms(): List<ClassroomEntity> {
+        return database.expensesDbQueries.classroomSelectAll().executeAsList()
+    }
+
+    fun getClassroomById(id: Long): ClassroomEntity? {
+        return database.expensesDbQueries.classroomSelectById(id).executeAsOneOrNull()
+    }
+
+    fun insertClassroom(franchiseId: Long, name: String) {
+        database.expensesDbQueries.classroomCreate(franchiseId, name)
+    }
+
+    fun updateClassroom(id: Long, franchiseId: Long, name: String) {
+        database.expensesDbQueries.classroomUpdate(franchiseId, name, id)
+    }
+
+    fun deleteClassroom(id: Long) {
+        database.expensesDbQueries.classroomDelete(id)
+    }
+
+// ============= INSCRIPCIONES (MÉTODOS FALTANTES) =============
+
+    fun insertInscription(precio: Double) {
+        val priceCents = (precio * 100).toLong()
+        database.expensesDbQueries.inscriptionCreate(priceCents)
+    }
+
+    fun updateInscription(id: Long, precio: Double) {
+        val priceCents = (precio * 100).toLong()
+        database.expensesDbQueries.inscriptionUpdate(priceCents, id)
+    }
+
+    fun getInscriptionById(id: Long): InscriptionEntity? {
+        return database.expensesDbQueries.inscriptionSelectById(id).executeAsOneOrNull()
+    }
+
+    // ============= DIRECCIONES (AGREGAR AL REPOSITORY) =============
+
+    fun createAddress(
+        street: String?,
+        number: String?,
+        neighborhood: String?,
+        zip: String?,
+        city: String?,
+        state: String?,
+        country: String?
+    ): Long {
+        database.expensesDbQueries.addressCreate(street, number, neighborhood, zip, city, state, country)
+        return database.expensesDbQueries.transactionWithResult {
+            database.expensesDbQueries.lastInsertRowId().executeAsOne()
+        }
+    }
+
+    fun getAddressById(id: Long): AddressEntity? {
+        return database.expensesDbQueries.addressSelectById(id).executeAsOneOrNull()
+    }
+
+    fun updateAddress(
+        id: Long,
+        street: String?,
+        number: String?,
+        neighborhood: String?,
+        zip: String?,
+        city: String?,
+        state: String?,
+        country: String?
+    ) {
+        database.expensesDbQueries.addressUpdate(street, number, neighborhood, zip, city, state, country, id)
+    }
+
+    fun deleteAddress(id: Long) {
+        database.expensesDbQueries.addressDelete(id)
+    }
+
+// ============= PRECIO BASE (MÉTODOS FALTANTES) =============
+
+    fun insertPrecioBase(precio: Double) {
+        val precioCents = (precio * 100).toLong() // Convertir a centavos
+        database.expensesDbQueries.precioBaseCreate(precioCents)
+    }
+
+    fun updatePrecioBase(id: Long, precio: Double) {
+        val precioCents = (precio * 100).toLong() // Convertir a centavos
+        database.expensesDbQueries.precioBaseUpdate(precioCents, id)
+    }
+
+    fun getPrecioBaseById(id: Long): PrecioBaseEntity? {
+        return database.expensesDbQueries.precioBaseSelectById(id).executeAsOneOrNull()
+    }
+
+// ============= MEMBRESÍAS (MÉTODOS FALTANTES) =============
+
+    fun insertMembership(name: String, monthsPaid: Long, monthsSaved: Double) {
+        val monthsSavedLong = monthsSaved.toLong() // Convertir a Long si es necesario
+        database.expensesDbQueries.membershipCreate(name, monthsPaid, monthsSavedLong)
+    }
+
+    fun updateMembership(id: Long, name: String, monthsPaid: Long, monthsSaved: Double) {
+        val monthsSavedLong = monthsSaved.toLong() // Convertir a Long si es necesario
+        database.expensesDbQueries.membershipUpdate(name, monthsPaid, monthsSavedLong, id)
+    }
+
+    fun getMembershipById(id: Long): MembershipEntity? {
+        return database.expensesDbQueries.membershipSelectById(id).executeAsOneOrNull()
+    }
 
     // ============= DASHBOARD HELPERS =============
 
@@ -437,7 +655,99 @@ class Repository(private val database: AppDatabaseBaby) {
         return Pair(maleCount, femaleCount)
     }
 
+    // ============= ADMINISTRATIVOS (MÉTODOS ACTUALIZADOS) =============
 
+    fun getAdministrativesByFranchise(franchiseId: Long): List<AdministrativeEntity> {
+        return database.expensesDbQueries.administrativesByFranchise(franchiseId).executeAsList()
+    }
+    fun createAdministrative(
+        userId: Long?,
+        franchiseId: Long,
+        firstName: String,
+        lastNamePaternal: String?,
+        lastNameMaternal: String?,
+        phone: String?,
+        email: String?,
+        position: String,
+        salaryCents: Long,
+        startTs: Long,
+        active: Long
+    ) {
+        database.expensesDbQueries.administrativeCreate(
+            userId, franchiseId, firstName, lastNamePaternal, lastNameMaternal,
+            phone, email, position, salaryCents, startTs, active
+        )
+    }
+
+    fun getAdministrativeById(id: Long): AdministrativeEntity? {
+        return database.expensesDbQueries.administrativeSelectById(id).executeAsOneOrNull()
+    }
+
+    // AGREGAR este método para actualizar administrativos
+    fun updateAdministrative(
+        id: Long,
+        userId: Long?,
+        franchiseId: Long,
+        firstName: String,
+        lastNamePaternal: String?,
+        lastNameMaternal: String?,
+        phone: String?,
+        email: String?,
+        position: String,
+        salaryCents: Long,
+        startTs: Long,
+        active: Long
+    ) {
+        database.expensesDbQueries.administrativeUpdate(
+            userId, franchiseId, firstName, lastNamePaternal, lastNameMaternal,
+            phone, email, position, salaryCents, startTs, active, id
+        )
+    }
+
+    fun getAllFranchisees(): List<AdministrativeEntity> {
+        return database.expensesDbQueries.administrativeSelectAll().executeAsList()
+            .filter {
+                it.position.contains("Franquiciatario", ignoreCase = true) ||
+                        it.position.contains("Dueño", ignoreCase = true) ||
+                        it.position.contains("Propietario", ignoreCase = true) ||
+                        it.position.contains("Gerente General", ignoreCase = true)
+            }
+    }
+
+    fun deleteFranchisee(id: Long) {
+        // Los franquiciatarios son administrativos, así que usar el método existente
+        deleteAdministrative(id)
+    }
+
+    // MÉTODO HELPER para crear franquiciatarios específicamente
+    fun createFranchisee(
+        userId: Long?,
+        franchiseId: Long,
+        firstName: String,
+        lastNamePaternal: String?,
+        lastNameMaternal: String?,
+        phone: String?,
+        email: String?,
+        ownershipPercentage: Double = 100.0,
+        salaryCents: Long,
+        startTs: Long,
+        active: Long = 1L
+    ) {
+        // Crear como administrativo con posición de "Franquiciatario"
+        createAdministrative(
+            userId = userId,
+            franchiseId = franchiseId,
+            firstName = firstName,
+            lastNamePaternal = lastNamePaternal,
+            lastNameMaternal = lastNameMaternal,
+            phone = phone,
+            email = email,
+            position = "Franquiciatario", // Posición fija
+            salaryCents = salaryCents,
+            startTs = startTs,
+            active = active
+        )
+    }
 
     fun initializeData() {
         val existingRoles = getRoleCount()

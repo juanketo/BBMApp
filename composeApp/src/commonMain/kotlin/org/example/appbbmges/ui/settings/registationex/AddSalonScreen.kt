@@ -102,19 +102,16 @@ fun AddSalonScreen(
     var existingSalones by remember { mutableStateOf<List<ClassroomEntity>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    // Cargar salones existentes
     LaunchedEffect(Unit) {
         try {
             existingSalones = repository.getAllClassrooms()
         } catch (e: Exception) {
             println("Error cargando salones: ${e.message}")
-            // Considera mostrar un Snackbar o Toast al usuario aquí
         } finally {
             isLoading = false
         }
     }
 
-    // Recargar salones
     fun reloadSalones() {
         isLoading = true
         try {
@@ -131,7 +128,6 @@ fun AddSalonScreen(
             .fillMaxSize()
             .background(AppColors.Background)
     ) {
-        // Formulario para agregar/editar
         if (showForm || editingSalon != null) {
             SalonFormDialog(
                 onDismiss = {
@@ -145,7 +141,6 @@ fun AddSalonScreen(
             )
         }
 
-        // Diálogo de confirmación para eliminar
         showDeleteDialog?.let { salon ->
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = null },
@@ -160,7 +155,6 @@ fun AddSalonScreen(
                                 showDeleteDialog = null
                             } catch (e: Exception) {
                                 println("Error al eliminar salón: ${e.message}")
-                                // Considera mostrar un Snackbar o Toast al usuario aquí
                                 showDeleteDialog = null
                             }
                         }
@@ -176,8 +170,7 @@ fun AddSalonScreen(
             )
         }
 
-        // Vista principal de la lista de salones
-        if (!showForm && editingSalon == null && showDeleteDialog == null) { // Solo mostrar si no hay formularios o diálogos activos
+        if (!showForm && editingSalon == null && showDeleteDialog == null) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -220,7 +213,6 @@ fun AddSalonScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Contenido principal (Tabla de salones o mensaje de vacío)
                 if (isLoading) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -267,7 +259,6 @@ fun AddSalonScreen(
                         }
                     }
                 } else {
-                    // Lista de salones
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -277,7 +268,6 @@ fun AddSalonScreen(
                         LazyColumn(
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Header de la tabla
                             item {
                                 Row(
                                     modifier = Modifier
@@ -302,7 +292,6 @@ fun AddSalonScreen(
                                 }
                             }
 
-                            // Filas de datos
                             items(existingSalones) { salon ->
                                 Row(
                                     modifier = Modifier
@@ -357,8 +346,6 @@ fun AddSalonScreen(
                     }
                 }
             }
-
-            // Botón flotante para agregar
             FloatingActionButton(
                 onClick = { showForm = true },
                 modifier = Modifier
@@ -386,30 +373,22 @@ private fun SalonFormDialog(
 ) {
     val focusManager = LocalFocusManager.current
     val isEditing = editingSalon != null
-
-    // Estados del formulario
     var currentStep by remember { mutableStateOf(SalonFormStep.FORM) }
     var name by remember { mutableStateOf(editingSalon?.name ?: "") }
     var formState by remember { mutableStateOf<SalonFormState>(SalonFormState.Idle) }
     var validationResult by remember { mutableStateOf(SalonValidationResult(true)) }
-
-    // NOTA IMPORTANTE: Necesitas una forma de obtener el ID de la franquicia actual.
-    // Por simplicidad en este ejemplo, se usa un valor fijo.
-    // DEBES REEMPLAZAR ESTO con el ID de franquicia real de tu aplicación.
     val currentFranchiseId = 1L
 
-    // Función de validación
     fun validateForm(): Boolean {
         val validation = SalonValidator.validateSalon(
             name = name,
             existingSalones = existingSalones,
-            excludeId = editingSalon?.id // Excluye el salón actual de la validación de duplicados al editar
+            excludeId = editingSalon?.id
         )
         validationResult = validation
         return validation.isValid
     }
 
-    // Función para proceder al siguiente paso o guardar
     fun proceedToNext() {
         when (currentStep) {
             SalonFormStep.FORM -> {
@@ -421,10 +400,10 @@ private fun SalonFormDialog(
                 formState = SalonFormState.Loading
                 try {
                     if (isEditing) {
-                        editingSalon?.let { salon ->
+                        editingSalon.let { salon ->
                             repository.updateClassroom(
                                 id = salon.id,
-                                franchiseId = currentFranchiseId, // Usar el ID actual de la franquicia
+                                franchiseId = currentFranchiseId,
                                 name = name
                             )
                         }
@@ -435,10 +414,10 @@ private fun SalonFormDialog(
                         )
                     }
                     formState = SalonFormState.Success
-                    onDismiss() // Cierra el diálogo al éxito
+                    onDismiss()
                 } catch (e: Exception) {
                     formState = SalonFormState.Error("Error al ${if (isEditing) "actualizar" else "registrar"} el salón: ${e.message}")
-                    println("Error al ${if (isEditing) "actualizar" else "registrar"} el salón: ${e.message}") // Log de error para depuración
+                    println("Error al ${if (isEditing) "actualizar" else "registrar"} el salón: ${e.message}")
                 }
             }
         }
@@ -482,7 +461,6 @@ private fun SalonFormDialog(
                                 formState = formState,
                                 onNameChange = {
                                     name = it
-                                    // Limpiar errores de validación al cambiar el texto
                                     if (validationResult.nameError != null || validationResult.duplicateError != null) {
                                         validationResult = validationResult.copy(
                                             nameError = null,

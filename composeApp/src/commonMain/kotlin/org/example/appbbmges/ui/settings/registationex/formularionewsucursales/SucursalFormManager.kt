@@ -45,9 +45,7 @@ class SucursalFormManager(
         private set
 
     private val preciosBase by lazy { repository.getAllPreciosBase() }
-    private val precioBaseDefault by lazy {
-        preciosBase.firstOrNull()?.precio?.toString() ?: SucursalConstants.DEFAULT_BASE_PRICE
-    }
+    private val precioBaseDefault by lazy { preciosBase.firstOrNull()?.let {(it.precio_cents.toDouble() / 100).toString() } ?: SucursalConstants.DEFAULT_BASE_PRICE }
 
     fun updateFormData(update: SucursalFormData.() -> SucursalFormData) {
         formData = formData.update()
@@ -217,24 +215,34 @@ class SucursalFormManager(
 
         try {
             val effectiveBasePrice = getEffectiveBasePrice()
+            val basePriceCents = ((effectiveBasePrice.toDoubleOrNull() ?: 0.0) * 100).toLong()
 
-            repository.insertFranchise(
-                formData.name,
-                formData.email.ifEmpty { null },
-                formData.phone.ifEmpty { null },
-                effectiveBasePrice.toDoubleOrNull(),
-                formData.currency.ifEmpty { null },
-                formData.addressStreet.ifEmpty { null },
-                formData.addressNumber.ifEmpty { null },
-                formData.addressNeighborhood.ifEmpty { null },
-                formData.addressZip.ifEmpty { null },
-                formData.addressCity.ifEmpty { null },
-                formData.addressCountry.ifEmpty { null },
-                formData.taxName.ifEmpty { null },
-                formData.taxId.ifEmpty { null },
-                formData.zone.ifEmpty { null },
-                if (formData.isNew) 1 else 0,
-                if (formData.active) 1 else 0
+            // Crear dirección solo si al menos la calle no está vacía
+            val addressId = if (formData.addressStreet.isNotEmpty()) {
+                repository.createAddress(
+                    street = formData.addressStreet.ifEmpty { null },
+                    number = formData.addressNumber.ifEmpty { null },
+                    neighborhood = formData.addressNeighborhood.ifEmpty { null },
+                    zip = formData.addressZip.ifEmpty { null },
+                    city = formData.addressCity.ifEmpty { null },
+                    state = null, // No tienes state en tu formulario
+                    country = formData.addressCountry.ifEmpty { null }
+                )
+            } else null
+
+            // Crear franquicia usando la función existente con parámetros correctos
+            repository.createFranchise(
+                name = formData.name,
+                email = formData.email.ifEmpty { null },
+                phone = formData.phone.ifEmpty { null },
+                basePriceCents = basePriceCents,
+                currency = formData.currency.ifEmpty { SucursalConstants.DEFAULT_CURRENCY },
+                taxName = formData.taxName.ifEmpty { null },
+                taxId = formData.taxId.ifEmpty { null },
+                zone = formData.zone.ifEmpty { null },
+                isNew = if (formData.isNew) 1L else 0L,
+                active = if (formData.active) 1L else 0L,
+                addressId = addressId
             )
 
             formState = SucursalFormState.Success

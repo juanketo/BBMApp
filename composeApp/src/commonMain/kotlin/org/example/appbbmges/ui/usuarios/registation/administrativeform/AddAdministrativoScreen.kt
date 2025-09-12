@@ -817,7 +817,7 @@ fun AddAdministrativoScreen(
                                     AdministrativeFormStep.CONFIRMATION -> {
                                         if (validateForm()) {
                                             startDate.takeIf { it.isNotEmpty() }?.let {
-                                                repository.insertAdministrative(
+                                                repository.createAdministrative(
                                                     franchiseId = franchiseId.toLong(),
                                                     firstName = firstName,
                                                     lastNamePaternal = lastNamePaternal.takeIf { it.isNotEmpty() },

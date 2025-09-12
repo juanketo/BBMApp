@@ -104,7 +104,7 @@ fun FormMembresiasScreen(
                 coroutineScope.launch {
                     try {
                         if (isEditing) {
-                            val id = editingMembership!!.id
+                            val id = editingMembership.id
                             repository.updateMembership(
                                 id = id,
                                 name = name.trim(),
@@ -213,7 +213,11 @@ fun FormMembresiasScreen(
                             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))) {
                                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(text = "Confirmar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Divider()
+                                    HorizontalDivider(
+                                        Modifier,
+                                        DividerDefaults.Thickness,
+                                        DividerDefaults.color
+                                    )
                                     Text("Nombre: $name", fontWeight = FontWeight.Medium)
                                     Text("Meses a Pagar: $monthsPaid", fontWeight = FontWeight.Medium)
                                     Text("Meses de Ahorro: $monthsSaved", fontWeight = FontWeight.Medium)

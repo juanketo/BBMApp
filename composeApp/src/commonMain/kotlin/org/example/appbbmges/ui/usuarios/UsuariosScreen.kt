@@ -24,18 +24,15 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.example.appbbmges.AdministrativeEntity
-import org.example.appbbmges.FranchiseeEntity
 import org.example.appbbmges.StudentEntity
 import org.example.appbbmges.TeacherEntity
 import org.example.appbbmges.data.Repository
 import org.example.appbbmges.navigation.SimpleNavController
 import org.example.appbbmges.ui.usuarios.registation.administrativeform.AddAdministrativoScreen
 import org.example.appbbmges.ui.usuarios.registation.studentsform.AddAlumnoScreen
-import org.example.appbbmges.ui.usuarios.registation.AddFranquiciatarioScreen
 import org.example.appbbmges.ui.usuarios.registation.AddProfesorScreen
 import org.example.appbbmges.ui.usuarios.viewusuarios.ViewAdministrativoScreen
 import org.example.appbbmges.ui.usuarios.viewusuarios.ViewAlumnoScreen
-import org.example.appbbmges.ui.usuarios.viewusuarios.ViewFranquiciatarioScreen
 import org.example.appbbmges.ui.usuarios.viewusuarios.ViewProfesorScreen
 
 object AppColors {
@@ -61,14 +58,28 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
 
     val students = remember { mutableStateOf(repository.getAllStudents()) }
     val teachers = remember { mutableStateOf(repository.getAllTeachers()) }
-    val franchisees = remember { mutableStateOf(repository.getAllFranchisees()) }
     val administratives = remember { mutableStateOf(repository.getAllAdministratives()) }
+
+    // Filtrar franquiciatarios de los administrativos
+    val franchisees = remember {
+        mutableStateOf(
+            repository.getAllAdministratives().filter {
+                it.position.contains("Franquiciatario", ignoreCase = true) ||
+                        it.position.contains("Dueño", ignoreCase = true) ||
+                        it.position.contains("Propietario", ignoreCase = true)
+            }
+        )
+    }
 
     LaunchedEffect(selectedTab, searchQuery) {
         students.value = repository.getAllStudents()
         teachers.value = repository.getAllTeachers()
-        franchisees.value = repository.getAllFranchisees()
         administratives.value = repository.getAllAdministratives()
+        franchisees.value = repository.getAllAdministratives().filter {
+            it.position.contains("Franquiciatario", ignoreCase = true) ||
+                    it.position.contains("Dueño", ignoreCase = true) ||
+                    it.position.contains("Propietario", ignoreCase = true)
+        }
     }
 
     val filteredUsers: List<Pair<Any, String>> = when (selectedTab) {
@@ -76,33 +87,34 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
             addAll(students.value.map { it to "Alumno" })
             addAll(teachers.value.map { it to "Profesor" })
             addAll(franchisees.value.map { it to "Franquiciatario" })
-            addAll(administratives.value.map { it to "Administrativo" })
+            addAll(administratives.value.filter { admin ->
+                !franchisees.value.any { franchisee -> franchisee.id == admin.id }
+            }.map { it to "Administrativo" })
         }
         "Alumnos" -> students.value.map { it to "Alumno" }
         "Profesores" -> teachers.value.map { it to "Profesor" }
         "Franquiciatarios" -> franchisees.value.map { it to "Franquiciatario" }
-        "Administrativos" -> administratives.value.map { it to "Administrativo" }
+        "Administrativos" -> administratives.value.filter { admin ->
+            !franchisees.value.any { franchisee -> franchisee.id == admin.id }
+        }.map { it to "Administrativo" }
         else -> emptyList()
     }.filter { userPair ->
         val (user, _) = userPair
         val fullName = when (user) {
             is StudentEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
             is TeacherEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
-            is FranchiseeEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
             is AdministrativeEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
             else -> ""
         }
         val phone = when (user) {
             is StudentEntity -> user.phone ?: ""
             is TeacherEntity -> user.phone ?: ""
-            is FranchiseeEntity -> user.phone ?: ""
             is AdministrativeEntity -> user.phone ?: ""
             else -> ""
         }
         val email = when (user) {
             is StudentEntity -> user.email ?: ""
             is TeacherEntity -> user.email ?: ""
-            is FranchiseeEntity -> user.email ?: ""
             is AdministrativeEntity -> user.email ?: ""
             else -> ""
         }
@@ -141,7 +153,7 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
                     onDismissRequest = { expandedAdd = false },
                     modifier = Modifier.align(Alignment.BottomEnd)
                 ) {
-                    listOf("Alumno", "Profesor", "Franquiciatario", "Administrativo").forEach { userType ->
+                    listOf("Alumno", "Profesor", "Administrativo").forEach { userType ->
                         DropdownMenuItem(
                             text = { Text("Agregar $userType") },
                             onClick = {
@@ -176,17 +188,15 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
                             },
                             repository = repository
                         )
-                        "Franquiciatario" -> AddFranquiciatarioScreen(
-                            onDismiss = {
-                                selectedUserType = null
-                                franchisees.value = repository.getAllFranchisees()
-                            },
-                            repository = repository
-                        )
                         "Administrativo" -> AddAdministrativoScreen(
                             onDismiss = {
                                 selectedUserType = null
                                 administratives.value = repository.getAllAdministratives()
+                                franchisees.value = repository.getAllAdministratives().filter {
+                                    it.position.contains("Franquiciatario", ignoreCase = true) ||
+                                            it.position.contains("Dueño", ignoreCase = true) ||
+                                            it.position.contains("Propietario", ignoreCase = true)
+                                }
                             },
                             repository = repository
                         )
@@ -209,13 +219,7 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
                             navController = navController,
                             onDismiss = { selectedProfile = null }
                         )
-                        "Franquiciatario" -> ViewFranquiciatarioScreen(
-                            franchiseeId = selectedProfile!!.second,
-                            repository = repository,
-                            navController = navController,
-                            onDismiss = { selectedProfile = null }
-                        )
-                        "Administrativo" -> ViewAdministrativoScreen(
+                        "Franquiciatario", "Administrativo" -> ViewAdministrativoScreen(
                             administrativeId = selectedProfile!!.second,
                             repository = repository,
                             navController = navController,
@@ -480,57 +484,10 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
                                                         )
                                                     }
                                                 }
-                                                "Franquiciatario" -> {
-                                                    val franchisee = user as FranchiseeEntity
-                                                    val franchiseeFullName = "${franchisee.first_name} ${franchisee.last_name_paternal ?: ""} ${franchisee.last_name_maternal ?: ""}".trim()
-                                                    Text("Franquiciatario", modifier = Modifier.weight(1.5f), color = AppColors.TextColor)
-                                                    Text(franchiseeFullName, modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                    Text(franchisee.phone ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                    Text(franchisee.email ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
-                                                    Text(if (franchisee.active == 1L) "Sí" else "No", modifier = Modifier.weight(1f), color = AppColors.TextColor)
-                                                    IconButton(
-                                                        onClick = {
-                                                            userToEdit = userPair
-                                                            selectedUserType = "Franquiciatario"
-                                                        },
-                                                        modifier = Modifier.weight(0.5f)
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = Icons.Default.Edit,
-                                                            contentDescription = "Actualizar",
-                                                            tint = Color.Gray
-                                                        )
-                                                    }
-                                                    IconButton(
-                                                        onClick = {
-                                                            userToDelete = userPair
-                                                            showDeleteDialog = true
-                                                        },
-                                                        modifier = Modifier.weight(0.5f)
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = Icons.Default.Delete,
-                                                            contentDescription = "Eliminar",
-                                                            tint = Color.Gray
-                                                        )
-                                                    }
-                                                    IconButton(
-                                                        onClick = {
-                                                            selectedProfile = Pair("Franquiciatario", franchisee.id)
-                                                        },
-                                                        modifier = Modifier.weight(0.5f)
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = Icons.Default.Info,
-                                                            contentDescription = "Ver Perfil",
-                                                            tint = AppColors.Primary
-                                                        )
-                                                    }
-                                                }
-                                                "Administrativo" -> {
+                                                "Franquiciatario", "Administrativo" -> {
                                                     val admin = user as AdministrativeEntity
                                                     val adminFullName = "${admin.first_name} ${admin.last_name_paternal ?: ""} ${admin.last_name_maternal ?: ""}".trim()
-                                                    Text("Administrativo", modifier = Modifier.weight(1.5f), color = AppColors.TextColor)
+                                                    Text(type, modifier = Modifier.weight(1.5f), color = AppColors.TextColor)
                                                     Text(adminFullName, modifier = Modifier.weight(2f), color = AppColors.TextColor)
                                                     Text(admin.phone ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
                                                     Text(admin.email ?: "-", modifier = Modifier.weight(2f), color = AppColors.TextColor)
@@ -563,7 +520,7 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
                                                     }
                                                     IconButton(
                                                         onClick = {
-                                                            selectedProfile = Pair("Administrativo", admin.id)
+                                                            selectedProfile = Pair(type, admin.id)
                                                         },
                                                         modifier = Modifier.weight(0.5f)
                                                     ) {
@@ -670,7 +627,6 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
             val userName = when (user) {
                 is StudentEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
                 is TeacherEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
-                is FranchiseeEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
                 is AdministrativeEntity -> "${user.first_name} ${user.last_name_paternal ?: ""} ${user.last_name_maternal ?: ""}".trim()
                 else -> ""
             }
@@ -706,15 +662,15 @@ fun UsuariosScreen(navController: SimpleNavController, repository: Repository) {
                                     repository.deleteTeacher(teacher.id)
                                     teachers.value = repository.getAllTeachers()
                                 }
-                                "Franquiciatario" -> {
-                                    val franchisee = user as FranchiseeEntity
-                                    repository.deleteFranchisee(franchisee.id)
-                                    franchisees.value = repository.getAllFranchisees()
-                                }
-                                "Administrativo" -> {
+                                "Franquiciatario", "Administrativo" -> {
                                     val admin = user as AdministrativeEntity
                                     repository.deleteAdministrative(admin.id)
                                     administratives.value = repository.getAllAdministratives()
+                                    franchisees.value = repository.getAllAdministratives().filter {
+                                        it.position.contains("Franquiciatario", ignoreCase = true) ||
+                                                it.position.contains("Dueño", ignoreCase = true) ||
+                                                it.position.contains("Propietario", ignoreCase = true)
+                                    }
                                 }
                             }
                             showDeleteDialog = false

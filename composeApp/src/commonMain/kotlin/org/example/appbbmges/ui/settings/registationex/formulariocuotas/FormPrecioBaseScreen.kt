@@ -76,7 +76,7 @@ fun FormPrecioBaseScreen(
     val isEditing = editingPrecio != null
 
     var currentStep by remember { mutableStateOf(CuotaFormStep.FORM) }
-    var precio by remember { mutableStateOf(editingPrecio?.precio?.toString() ?: "") }
+    var precio by remember {mutableStateOf(editingPrecio?.let { (it.precio_cents.toDouble() / 100).toString() } ?: "") }
     var formState by remember { mutableStateOf<CuotaFormState>(CuotaFormState.Idle) }
     var validationResult by remember { mutableStateOf(CuotaValidationResult(true)) }
 
@@ -96,7 +96,7 @@ fun FormPrecioBaseScreen(
                 coroutineScope.launch {
                     try {
                         if (isEditing) {
-                            val id = editingPrecio!!.id
+                            val id = editingPrecio.id
                             repository.updatePrecioBase(
                                 id = id,
                                 precio = precio.toDouble()
@@ -197,7 +197,11 @@ fun FormPrecioBaseScreen(
                             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))) {
                                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(text = "Confirmar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Divider()
+                                    HorizontalDivider(
+                                        Modifier,
+                                        DividerDefaults.Thickness,
+                                        DividerDefaults.color
+                                    )
                                     Text("Precio: $$precio", fontWeight = FontWeight.Medium)
                                 }
                             }
