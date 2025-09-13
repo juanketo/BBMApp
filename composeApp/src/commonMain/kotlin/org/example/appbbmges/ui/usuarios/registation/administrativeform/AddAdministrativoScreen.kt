@@ -21,6 +21,7 @@ import appbbmges.composeapp.generated.resources.logoSystem
 import org.example.appbbmges.data.Repository
 import org.example.appbbmges.ui.usuarios.AppColors
 import org.jetbrains.compose.resources.painterResource
+import kotlinx.datetime.Clock
 
 data class AdministrativeData(
     val franchiseId: Long,
@@ -816,28 +817,26 @@ fun AddAdministrativoScreen(
                                     }
                                     AdministrativeFormStep.CONFIRMATION -> {
                                         if (validateForm()) {
-                                            startDate.takeIf { it.isNotEmpty() }?.let {
+                                            try {
+                                                val currentTime = Clock.System.now().toEpochMilliseconds()
+                                                val salaryCents = (salary.toDouble() * 100).toLong()
+
                                                 repository.createAdministrative(
+                                                    userId = null,
                                                     franchiseId = franchiseId.toLong(),
                                                     firstName = firstName,
                                                     lastNamePaternal = lastNamePaternal.takeIf { it.isNotEmpty() },
                                                     lastNameMaternal = lastNameMaternal.takeIf { it.isNotEmpty() },
-                                                    gender = gender.takeIf { it.isNotEmpty() },
-                                                    birthDate = birthDate.takeIf { it.isNotEmpty() },
-                                                    nationality = nationality.takeIf { it.isNotEmpty() },
-                                                    taxId = taxId.takeIf { it.isNotEmpty() },
-                                                    nss = nss.takeIf { it.isNotEmpty() },
                                                     phone = phone.takeIf { it.isNotEmpty() },
                                                     email = email.takeIf { it.isNotEmpty() },
-                                                    addressStreet = addressStreet.takeIf { it.isNotEmpty() },
-                                                    addressZip = addressZip.takeIf { it.isNotEmpty() },
-                                                    emergencyContactName = emergencyContactName.takeIf { it.isNotEmpty() },
-                                                    emergencyContactPhone = emergencyContactPhone.takeIf { it.isNotEmpty() },
                                                     position = position,
-                                                    salary = salary.toDouble(),
-                                                    startDate = it,
+                                                    salaryCents = salaryCents,
+                                                    startTs = currentTime,
                                                     active = if (active) 1L else 0L
                                                 )
+                                                onDismiss()
+                                            } catch (e: Exception) {
+                                                formError = "Error al registrar: ${e.message}"
                                             }
                                             onDismiss()
                                         } else {

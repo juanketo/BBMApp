@@ -247,7 +247,9 @@ CREATE TABLE AdministrativeEntity (
     address_id INTEGER REFERENCES AddressEntity(id)
 );
 
-
+studentCreate:
+INSERT INTO StudentEntity (user_id, franchise_id, first_name, last_name_paternal, last_name_maternal, birth_date_ts, curp, phone, email, address_id, active)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 administrativesByFranchise:
 SELECT * FROM AdministrativeEntity WHERE franchise_id = ?;
