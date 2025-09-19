@@ -50,8 +50,6 @@ CREATE TABLE UserEntity (
     updated_at INTEGER NOT NULL
 );
 
--- ========== CONSULTAS UserEntity ==========
-
 -- Crear usuario
 userCreate:
 INSERT INTO UserEntity (username, password_hash, active, created_at, updated_at)
@@ -1156,43 +1154,14 @@ SELECT
 FROM StudentEntity s
 WHERE strftime('%m', datetime(s.birth_date_ts / 1000, 'unixepoch')) = strftime('%m', 'now');
 
-birthdaysThisMonthByFranchise:
-SELECT * FROM BirthdayThisMonthView WHERE franchise_id = ?;
-
-CREATE TABLE SystemLogEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER REFERENCES UserEntity(id) ON DELETE SET NULL,
-    action TEXT NOT NULL,
-    description TEXT,
-    module TEXT,
-    created_ts INTEGER NOT NULL
-);
-
--- Registrar un evento en la bitácora
-logCreate:
-INSERT INTO SystemLogEntity (user_id, action, description, module, created_ts)
-VALUES (?, ?, ?, ?, ?);
-
--- Consultar logs por usuario
-logByUser:
-SELECT * FROM SystemLogEntity WHERE user_id = ? ORDER BY created_ts DESC;
-
--- Consultar logs por módulo (ej: 'Student', 'Franchise', etc.)
-logByModule:
-SELECT * FROM SystemLogEntity WHERE module = ? ORDER BY created_ts DESC;
-
--- Últimos eventos del sistema
-logRecent:
-SELECT * FROM SystemLogEntity ORDER BY created_ts DESC LIMIT 100;
-
 CREATE TABLE EventEntity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     description TEXT,
-    event_ts INTEGER NOT NULL,                 -- Fecha/hora del evento
-    event_type TEXT NOT NULL DEFAULT 'GENERAL',-- 'CUMPLEAÑOS', 'GLOBAL', 'JUNTA', etc.
-    global INTEGER NOT NULL DEFAULT 0 CHECK (global IN (0,1)), -- Si es global o local
-    franchise_id INTEGER REFERENCES FranchiseEntity(id) ON DELETE CASCADE, -- NULL si es global
+    event_ts INTEGER NOT NULL,
+    event_type TEXT NOT NULL DEFAULT 'GENERAL',
+    global INTEGER NOT NULL DEFAULT 0 CHECK (global IN (0,1)),
+    franchise_id INTEGER REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
     created_ts INTEGER NOT NULL,
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1))
 );
@@ -1212,13 +1181,6 @@ eventsByFranchise:
 SELECT * FROM EventEntity
 WHERE (global = 1 OR franchise_id = ?) AND active = 1
 ORDER BY event_ts DESC;
-
--- Cumpleaños del mes (ya vienen desde StudentEntity)
-birthdaysThisMonthByFranchise:
-SELECT s.id, s.first_name, s.last_name_paternal, s.birth_date_ts
-FROM StudentEntity s
-WHERE strftime('%m', datetime(s.birth_date_ts / 1000, 'unixepoch')) = ?
-  AND s.franchise_id = ? AND s.active = 1;
 
 CREATE TABLE ProductEntity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1315,4 +1277,3 @@ SELECT * FROM StudentEntity
 WHERE franchise_id = ?
   AND strftime('%m', datetime(birth_date_ts, 'unixepoch')) = strftime('%m', 'now')
   AND active = 1;
-

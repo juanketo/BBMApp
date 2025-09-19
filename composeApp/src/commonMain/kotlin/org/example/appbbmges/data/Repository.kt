@@ -1,11 +1,9 @@
 package org.example.appbbmges.data
 
-import org.example.appbbmges.AppDatabaseBaby
-
 import org.example.appbbmges.AdministrativeEntity
+import org.example.appbbmges.AppDatabaseBaby
 import org.example.appbbmges.BoutiqueItemEntity
 import org.example.appbbmges.ClassroomEntity
-import org.example.appbbmges.DisciplineEntity
 import org.example.appbbmges.DisciplineSelectAll
 import org.example.appbbmges.DisciplineSelectByBaseName
 import org.example.appbbmges.DisciplineSelectById
@@ -35,7 +33,6 @@ import org.example.appbbmges.TrialClassEntity
 import org.example.appbbmges.UserEntity
 
 class Repository(private val database: AppDatabaseBaby) {
-
 
     // --- RoleEntity ---
     fun insertRole(name: String, description: String?) {
@@ -93,22 +90,10 @@ class Repository(private val database: AppDatabaseBaby) {
 
     // --- FranchiseEntity ---
     fun insertFranchise(
-        name: String,
-        email: String?,
-        phone: String?,
-        basePrice: Double?,
-        currency: String?,
-        addressStreet: String?,
-        addressNumber: String?,
-        addressNeighborhood: String?,
-        addressZip: String?,
-        addressCity: String?,
-        addressCountry: String?,
-        taxName: String?,
-        taxId: String?,
-        zone: String?,
-        isNew: Long = 0,
-        active: Long = 1
+        name: String, email: String?, phone: String?, basePrice: Double?, currency: String?,
+        addressStreet: String?, addressNumber: String?, addressNeighborhood: String?, addressZip: String?,
+        addressCity: String?, addressCountry: String?, taxName: String?, taxId: String?, zone: String?,
+        isNew: Long = 0, active: Long = 1
     ) {
         database.expensesDbQueries.franchiseCreate(
             name, email, phone, basePrice, currency, addressStreet, addressNumber, addressNeighborhood,
@@ -125,27 +110,13 @@ class Repository(private val database: AppDatabaseBaby) {
     }
 
     fun updateFranchise(
-        id: Long,
-        name: String,
-        email: String?,
-        phone: String?,
-        basePrice: Double?,
-        currency: String?,
-        addressStreet: String?,
-        addressNumber: String?,
-        addressNeighborhood: String?,
-        addressZip: String?,
-        addressCity: String?,
-        addressCountry: String?,
-        taxName: String?,
-        taxId: String?,
-        zone: String?,
-        isNew: Long,
-        active: Long
+        id: Long, name: String, email: String?, phone: String?, basePrice: Double?, currency: String?, addressStreet: String?, addressNumber: String?,
+        addressNeighborhood: String?, addressZip: String?, addressCity: String?, addressCountry: String?, taxName: String?, taxId: String?, zone: String?,
+        isNew: Long, active: Long
     ) {
         database.expensesDbQueries.franchiseUpdate(
-            name, email, phone, basePrice, currency, addressStreet, addressNumber, addressNeighborhood,
-            addressZip, addressCity, addressCountry, taxName, taxId, zone, isNew, active, id
+            name, email, phone, basePrice, currency, addressStreet, addressNumber, addressZip,
+            addressCity, addressCountry, taxName, taxId, zone, isNew, active, id
         )
     }
 
@@ -182,6 +153,7 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.levelCount().executeAsOne()
     }
 
+    // --- DisciplineEntity ---
     fun insertDiscipline(name: String, levelId: Long) {
         database.expensesDbQueries.disciplineCreate(name, levelId)
     }
@@ -192,7 +164,9 @@ class Repository(private val database: AppDatabaseBaby) {
         database.expensesDbQueries.transaction {
             levelIds.forEach { levelId ->
                 val level = getLevelById(levelId)
-                if (level == null) return@forEach
+                if (level == null) {
+                    return@forEach
+                }
 
                 val disciplineName = "$baseName ${level.name}".trim()
                 try {
@@ -206,7 +180,6 @@ class Repository(private val database: AppDatabaseBaby) {
                 }
             }
         }
-
         return failedInsertions
     }
 
@@ -233,101 +206,6 @@ class Repository(private val database: AppDatabaseBaby) {
     fun getDisciplineCount(): Long {
         return database.expensesDbQueries.disciplineCount().executeAsOne()
     }
-
-
-    // --- FranchiseEntity ---
-    fun insertFranchise(
-        name: String,
-        email: String?,
-        phone: String?,
-        basePrice: Double?,
-        currency: String?,
-        addressStreet: String?,
-        addressNumber: String?,
-        addressNeighborhood: String?,
-        addressZip: String?,
-        addressCity: String?,
-        addressCountry: String?,
-        taxName: String?,
-        taxId: String?,
-        zone: String?,
-        isNew: Long = 0,
-        active: Long = 1
-    ) {
-        database.expensesDbQueries.franchiseCreate(
-            name, email, phone, basePrice, currency, addressStreet, addressNumber,
-            addressNeighborhood, addressZip, addressCity, addressCountry,
-            taxName, taxId, zone, isNew, active
-        )
-    }
-
-    fun getAllFranchises(): List<FranchiseEntity> {
-        return database.expensesDbQueries.franchiseSelectAll().executeAsList()
-    }
-
-    fun getFranchiseById(id: Long): FranchiseEntity? {
-        return database.expensesDbQueries.franchiseSelectById(id).executeAsOneOrNull()
-    }
-
-    fun updateFranchise(
-        id: Long,
-        name: String,
-        email: String?,
-        phone: String?,
-        basePrice: Double?,
-        currency: String?,
-        addressStreet: String?,
-        addressNumber: String?,
-        addressNeighborhood: String?,
-        addressZip: String?,
-        addressCity: String?,
-        addressCountry: String?,
-        taxName: String?,
-        taxId: String?,
-        zone: String?,
-        isNew: Long,
-        active: Long
-    ) {
-        database.expensesDbQueries.franchiseUpdate(
-            name, email, phone, basePrice, currency, addressStreet, addressNumber,
-            addressZip, addressCity, addressCountry, taxName, taxId, zone,
-            isNew, active, id
-        )
-    }
-
-    fun deleteFranchise(id: Long) {
-        database.expensesDbQueries.franchiseDelete(id)
-    }
-
-    fun getFranchiseCount(): Long {
-        return database.expensesDbQueries.franchiseCount().executeAsOne()
-    }
-
-    // --- LevelEntity ---
-    fun insertLevel(name: String) {
-        database.expensesDbQueries.levelCreate(name)
-    }
-
-    fun getAllLevels(): List<LevelEntity> {
-        return database.expensesDbQueries.levelSelectAll().executeAsList()
-    }
-
-    fun getLevelById(id: Long): LevelEntity? {
-        return database.expensesDbQueries.levelSelectById(id).executeAsOneOrNull()
-    }
-
-    fun updateLevel(id: Long, name: String) {
-        database.expensesDbQueries.levelUpdate(name, id)
-    }
-
-    fun deleteLevel(id: Long) {
-        database.expensesDbQueries.levelDelete(id)
-    }
-
-    fun getLevelCount(): Long {
-        return database.expensesDbQueries.levelCount().executeAsOne()
-    }
-
 
     // --- FranchiseDisciplineEntity ---
     fun insertFranchiseDiscipline(franchiseId: Long, disciplineId: Long) {
@@ -385,42 +263,16 @@ class Repository(private val database: AppDatabaseBaby) {
 
     // --- TeacherEntity ---
     fun insertTeacher(
-        firstName: String,
-        lastNamePaternal: String?,
-        lastNameMaternal: String?,
-        gender: String?,
-        birthDate: String?,
-        nationality: String?,
-        taxId: String?,
-        phone: String?,
-        email: String?,
-        addressStreet: String?,
-        addressZip: String?,
-        emergencyContactName: String?,
-        emergencyContactPhone: String?,
-        salaryPerHour: Double?,
-        startDate: String?,
-        active: Long = 1,
-        vetoed: Long = 0
+        firstName: String, lastNamePaternal: String?, lastNameMaternal: String?, gender: String?,
+        birthDate: String?, nationality: String?, taxId: String?, phone: String?, email: String?,
+        addressStreet: String?, addressZip: String?, emergencyContactName: String?,
+        emergencyContactPhone: String?, salaryPerHour: Double?, startDate: String?,
+        active: Long = 1, vetoed: Long = 0
     ) {
         database.expensesDbQueries.teacherCreate(
-            firstName,
-            lastNamePaternal,
-            lastNameMaternal,
-            gender,
-            birthDate,
-            nationality,
-            taxId,
-            phone,
-            email,
-            addressStreet,
-            addressZip,
-            emergencyContactName,
-            emergencyContactPhone,
-            salaryPerHour,
-            startDate,
-            active,
-            vetoed
+            firstName, lastNamePaternal, lastNameMaternal, gender, birthDate, nationality, taxId,
+            phone, email, addressStreet, addressZip, emergencyContactName, emergencyContactPhone,
+            salaryPerHour, startDate, active, vetoed
         )
     }
 
@@ -433,44 +285,16 @@ class Repository(private val database: AppDatabaseBaby) {
     }
 
     fun updateTeacher(
-        id: Long,
-        firstName: String,
-        lastNamePaternal: String?,
-        lastNameMaternal: String?,
-        gender: String?,
-        birthDate: String?,
-        nationality: String?,
-        taxId: String?,
-        phone: String?,
-        email: String?,
-        addressStreet: String?,
-        addressZip: String?,
-        emergencyContactName: String?,
-        emergencyContactPhone: String?,
-        salaryPerHour: Double?,
-        startDate: String?,
-        active: Long,
-        vetoed: Long
+        id: Long, firstName: String, lastNamePaternal: String?, lastNameMaternal: String?, gender: String?,
+        birthDate: String?, nationality: String?, taxId: String?, phone: String?, email: String?,
+        addressStreet: String?, addressZip: String?, emergencyContactName: String?,
+        emergencyContactPhone: String?, salaryPerHour: Double?, startDate: String?,
+        active: Long, vetoed: Long
     ) {
         database.expensesDbQueries.teacherUpdate(
-            firstName,
-            lastNamePaternal,
-            lastNameMaternal,
-            gender,
-            birthDate,
-            nationality,
-            taxId,
-            phone,
-            email,
-            addressStreet,
-            addressZip,
-            emergencyContactName,
-            emergencyContactPhone,
-            salaryPerHour,
-            startDate,
-            active,
-            vetoed,
-            id
+            firstName, lastNamePaternal, lastNameMaternal, gender, birthDate, nationality, taxId,
+            phone, email, addressStreet, addressZip, emergencyContactName, emergencyContactPhone,
+            salaryPerHour, startDate, active, vetoed, id
         )
     }
 
@@ -502,22 +326,9 @@ class Repository(private val database: AppDatabaseBaby) {
         active: Long = 1
     ) {
         database.expensesDbQueries.franchiseeCreate(
-            franchiseId,
-            firstName,
-            lastNamePaternal,
-            lastNameMaternal,
-            gender,
-            birthDate,
-            nationality,
-            taxId,
-            phone,
-            email,
-            addressStreet,
-            addressZip,
-            emergencyContactName,
-            emergencyContactPhone,
-            startDate,
-            active
+            franchiseId, firstName, lastNamePaternal, lastNameMaternal, gender, birthDate,
+            nationality, taxId, phone, email, addressStreet, addressZip,
+            emergencyContactName, emergencyContactPhone, startDate, active
         )
     }
 
@@ -553,23 +364,9 @@ class Repository(private val database: AppDatabaseBaby) {
         active: Long
     ) {
         database.expensesDbQueries.franchiseeUpdate(
-            franchiseId,
-            firstName,
-            lastNamePaternal,
-            lastNameMaternal,
-            gender,
-            birthDate,
-            nationality,
-            taxId,
-            phone,
-            email,
-            addressStreet,
-            addressZip,
-            emergencyContactName,
-            emergencyContactPhone,
-            startDate,
-            active,
-            id
+            franchiseId, firstName, lastNamePaternal, lastNameMaternal, gender, birthDate,
+            nationality, taxId, phone, email, addressStreet, addressZip,
+            emergencyContactName, emergencyContactPhone, startDate, active, id
         )
     }
 
@@ -633,50 +430,19 @@ class Repository(private val database: AppDatabaseBaby) {
 
     // --- StudentEntity ---
     fun insertStudent(
-        franchiseId: Long,
-        firstName: String,
-        lastNamePaternal: String?,
-        lastNameMaternal: String?,
-        gender: String?,
-        birthDate: String?,
-        nationality: String?,
-        curp: String?,
-        phone: String?,
-        email: String?,
-        addressStreet: String?,
-        addressZip: String?,
-        parentFatherFirstName: String?,
-        parentFatherLastNamePaternal: String?,
-        parentFatherLastNameMaternal: String?,
-        parentMotherFirstName: String?,
-        parentMotherLastNamePaternal: String?,
-        parentMotherLastNameMaternal: String?,
-        bloodType: String?,
-        chronicDisease: String?,
+        franchiseId: Long, firstName: String, lastNamePaternal: String?, lastNameMaternal: String?,
+        gender: String?, birthDate: String?, nationality: String?, curp: String?, phone: String?,
+        email: String?, addressStreet: String?, addressZip: String?, parentFatherFirstName: String?,
+        parentFatherLastNamePaternal: String?, parentFatherLastNameMaternal: String?,
+        parentMotherFirstName: String?, parentMotherLastNamePaternal: String?,
+        parentMotherLastNameMaternal: String?, bloodType: String?, chronicDisease: String?,
         active: Long = 1
     ) {
         database.expensesDbQueries.studentCreate(
-            franchiseId,
-            firstName,
-            lastNamePaternal,
-            lastNameMaternal,
-            gender,
-            birthDate,
-            nationality,
-            curp,
-            phone,
-            email,
-            addressStreet,
-            addressZip,
-            parentFatherFirstName,
-            parentFatherLastNamePaternal,
-            parentFatherLastNameMaternal,
-            parentMotherFirstName,
-            parentMotherLastNamePaternal,
-            parentMotherLastNameMaternal,
-            bloodType,
-            chronicDisease,
-            active
+            franchiseId, firstName, lastNamePaternal, lastNameMaternal, gender, birthDate, nationality,
+            curp, phone, email, addressStreet, addressZip, parentFatherFirstName, parentFatherLastNamePaternal,
+            parentFatherLastNameMaternal, parentMotherFirstName, parentMotherLastNamePaternal,
+            parentMotherLastNameMaternal, bloodType, chronicDisease, active
         )
     }
 
@@ -693,52 +459,19 @@ class Repository(private val database: AppDatabaseBaby) {
     }
 
     fun updateStudent(
-        id: Long,
-        franchiseId: Long,
-        firstName: String,
-        lastNamePaternal: String?,
-        lastNameMaternal: String?,
-        gender: String?,
-        birthDate: String?,
-        nationality: String?,
-        curp: String?,
-        phone: String?,
-        email: String?,
-        addressStreet: String?,
-        addressZip: String?,
-        parentFatherFirstName: String?,
-        parentFatherLastNamePaternal: String?,
-        parentFatherLastNameMaternal: String?,
-        parentMotherFirstName: String?,
-        parentMotherLastNamePaternal: String?,
-        parentMotherLastNameMaternal: String?,
-        bloodType: String?,
-        chronicDisease: String?,
+        id: Long, franchiseId: Long, firstName: String, lastNamePaternal: String?, lastNameMaternal: String?,
+        gender: String?, birthDate: String?, nationality: String?, curp: String?, phone: String?,
+        email: String?, addressStreet: String?, addressZip: String?, parentFatherFirstName: String?,
+        parentFatherLastNamePaternal: String?, parentFatherLastNameMaternal: String?,
+        parentMotherFirstName: String?, parentMotherLastNamePaternal: String?,
+        parentMotherLastNameMaternal: String?, bloodType: String?, chronicDisease: String?,
         active: Long
     ) {
         database.expensesDbQueries.studentUpdate(
-            franchiseId,
-            firstName,
-            lastNamePaternal,
-            lastNameMaternal,
-            gender,
-            birthDate,
-            nationality,
-            curp,
-            phone,
-            email,
-            addressStreet,
-            addressZip,
-            parentFatherFirstName,
-            parentFatherLastNamePaternal,
-            parentFatherLastNameMaternal,
-            parentMotherFirstName,
-            parentMotherLastNamePaternal,
-            parentMotherLastNameMaternal,
-            bloodType,
-            chronicDisease,
-            active,
-            id
+            franchiseId, firstName, lastNamePaternal, lastNameMaternal, gender, birthDate, nationality,
+            curp, phone, email, addressStreet, addressZip, parentFatherFirstName, parentFatherLastNamePaternal,
+            parentFatherLastNameMaternal, parentMotherFirstName, parentMotherLastNamePaternal,
+            parentMotherLastNameMaternal, bloodType, chronicDisease, active, id
         )
     }
 
@@ -751,18 +484,8 @@ class Repository(private val database: AppDatabaseBaby) {
     }
 
     // --- StudentAuthorizedAdultEntity ---
-    fun insertStudentAuthorizedAdult(
-        studentId: Long,
-        firstName: String,
-        lastNamePaternal: String?,
-        lastNameMaternal: String?
-    ) {
-        database.expensesDbQueries.studentAuthorizedAdultCreate(
-            studentId,
-            firstName,
-            lastNamePaternal,
-            lastNameMaternal
-        )
+    fun insertStudentAuthorizedAdult(studentId: Long, firstName: String, lastNamePaternal: String?, lastNameMaternal: String?) {
+        database.expensesDbQueries.studentAuthorizedAdultCreate(studentId, firstName, lastNamePaternal, lastNameMaternal)
     }
 
     fun getAllStudentAuthorizedAdults(): List<StudentAuthorizedAdultEntity> {
@@ -777,20 +500,8 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.studentAuthorizedAdultSelectByStudentId(studentId).executeAsList()
     }
 
-    fun updateStudentAuthorizedAdult(
-        id: Long,
-        studentId: Long,
-        firstName: String,
-        lastNamePaternal: String?,
-        lastNameMaternal: String?
-    ) {
-        database.expensesDbQueries.studentAuthorizedAdultUpdate(
-            studentId,
-            firstName,
-            lastNamePaternal,
-            lastNameMaternal,
-            id
-        )
+    fun updateStudentAuthorizedAdult(id: Long, studentId: Long, firstName: String, lastNamePaternal: String?, lastNameMaternal: String?) {
+        database.expensesDbQueries.studentAuthorizedAdultUpdate(studentId, firstName, lastNamePaternal, lastNameMaternal, id)
     }
 
     fun deleteStudentAuthorizedAdult(id: Long) {
@@ -802,24 +513,8 @@ class Repository(private val database: AppDatabaseBaby) {
     }
 
     // --- ScheduleEntity ---
-    fun insertSchedule(
-        franchiseId: Long,
-        classroomId: Long,
-        teacherId: Long,
-        disciplineId: Long,
-        dayOfWeek: Long,
-        startTime: String,
-        endTime: String
-    ) {
-        database.expensesDbQueries.scheduleCreate(
-            franchiseId,
-            classroomId,
-            teacherId,
-            disciplineId,
-            dayOfWeek,
-            startTime,
-            endTime
-        )
+    fun insertSchedule(franchiseId: Long, classroomId: Long, teacherId: Long, disciplineId: Long, dayOfWeek: Long, startTime: String, endTime: String) {
+        database.expensesDbQueries.scheduleCreate(franchiseId, classroomId, teacherId, disciplineId, dayOfWeek, startTime, endTime)
     }
 
     fun getAllSchedules(): List<ScheduleEntity> {
@@ -834,26 +529,8 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.scheduleSelectByFranchiseId(franchiseId).executeAsList()
     }
 
-    fun updateSchedule(
-        id: Long,
-        franchiseId: Long,
-        classroomId: Long,
-        teacherId: Long,
-        disciplineId: Long,
-        dayOfWeek: Long,
-        startTime: String,
-        endTime: String
-    ) {
-        database.expensesDbQueries.scheduleUpdate(
-            franchiseId,
-            classroomId,
-            teacherId,
-            disciplineId,
-            dayOfWeek,
-            startTime,
-            endTime,
-            id
-        )
+    fun updateSchedule(id: Long, franchiseId: Long, classroomId: Long, teacherId: Long, disciplineId: Long, dayOfWeek: Long, startTime: String, endTime: String) {
+        database.expensesDbQueries.scheduleUpdate(franchiseId, classroomId, teacherId, disciplineId, dayOfWeek, startTime, endTime, id)
     }
 
     fun deleteSchedule(id: Long) {
@@ -890,14 +567,7 @@ class Repository(private val database: AppDatabaseBaby) {
     }
 
     // --- BoutiqueItemEntity ---
-    fun insertBoutiqueItem(
-        description: String,
-        code: String,
-        line: String?,
-        franchisePrice: Double?,
-        suggestedPrice: Double?,
-        country: String?
-    ) {
+    fun insertBoutiqueItem(description: String, code: String, line: String?, franchisePrice: Double?, suggestedPrice: Double?, country: String?) {
         database.expensesDbQueries.boutiqueItemCreate(description, code, line, franchisePrice, suggestedPrice, country)
     }
 
@@ -913,15 +583,7 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.boutiqueItemSelectByCode(code).executeAsOneOrNull()
     }
 
-    fun updateBoutiqueItem(
-        id: Long,
-        description: String,
-        code: String,
-        line: String?,
-        franchisePrice: Double?,
-        suggestedPrice: Double?,
-        country: String?
-    ) {
+    fun updateBoutiqueItem(id: Long, description: String, code: String, line: String?, franchisePrice: Double?, suggestedPrice: Double?, country: String?) {
         database.expensesDbQueries.boutiqueItemUpdate(description, code, line, franchisePrice, suggestedPrice, country, id)
     }
 
@@ -934,12 +596,7 @@ class Repository(private val database: AppDatabaseBaby) {
     }
 
     // --- FranchiseBoutiqueInventoryEntity ---
-    fun insertFranchiseBoutiqueInventory(
-        franchiseId: Long,
-        boutiqueItemId: Long,
-        stock: Long,
-        salePrice: Double?
-    ) {
+    fun insertFranchiseBoutiqueInventory(franchiseId: Long, boutiqueItemId: Long, stock: Long, salePrice: Double?) {
         database.expensesDbQueries.franchiseBoutiqueInventoryCreate(franchiseId, boutiqueItemId, stock, salePrice)
     }
 
@@ -951,12 +608,7 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.franchiseBoutiqueInventorySelectByFranchiseId(franchiseId).executeAsList()
     }
 
-    fun updateFranchiseBoutiqueInventory(
-        franchiseId: Long,
-        boutiqueItemId: Long,
-        stock: Long,
-        salePrice: Double?
-    ) {
+    fun updateFranchiseBoutiqueInventory(franchiseId: Long, boutiqueItemId: Long, stock: Long, salePrice: Double?) {
         database.expensesDbQueries.franchiseBoutiqueInventoryUpdate(stock, salePrice, franchiseId, boutiqueItemId)
     }
 
@@ -969,13 +621,7 @@ class Repository(private val database: AppDatabaseBaby) {
     }
 
     // --- SnackItemEntity ---
-    fun insertSnackItem(
-        franchiseId: Long,
-        name: String,
-        code: String,
-        stock: Long,
-        price: Double
-    ) {
+    fun insertSnackItem(franchiseId: Long, name: String, code: String, stock: Long, price: Double) {
         database.expensesDbQueries.snackItemCreate(franchiseId, name, code, stock, price)
     }
 
@@ -991,14 +637,7 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.snackItemSelectByCode(code).executeAsOneOrNull()
     }
 
-    fun updateSnackItem(
-        id: Long,
-        franchiseId: Long,
-        name: String,
-        code: String,
-        stock: Long,
-        price: Double
-    ) {
+    fun updateSnackItem(id: Long, franchiseId: Long, name: String, code: String, stock: Long, price: Double) {
         database.expensesDbQueries.snackItemUpdate(franchiseId, name, code, stock, price, id)
     }
 
@@ -1011,18 +650,8 @@ class Repository(private val database: AppDatabaseBaby) {
     }
 
     // --- PromotionEntity ---
-    fun insertPromotion(
-        name: String,
-        startDate: String,
-        endDate: String,
-        discountType: String,
-        discountValue: Double,
-        applicableToNew: Long,
-        applicableToActive: Long
-    ) {
-        database.expensesDbQueries.promotionCreate(
-            name, startDate, endDate, discountType, discountValue, applicableToNew, applicableToActive
-        )
+    fun insertPromotion(name: String, startDate: String, endDate: String, discountType: String, discountValue: Double, applicableToNew: Long, applicableToActive: Long) {
+        database.expensesDbQueries.promotionCreate(name, startDate, endDate, discountType, discountValue, applicableToNew, applicableToActive)
     }
 
     fun getAllPromotions(): List<PromotionEntity> {
@@ -1033,19 +662,8 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.promotionSelectById(id).executeAsOneOrNull()
     }
 
-    fun updatePromotion(
-        id: Long,
-        name: String,
-        startDate: String,
-        endDate: String,
-        discountType: String,
-        discountValue: Double,
-        applicableToNew: Long,
-        applicableToActive: Long
-    ) {
-        database.expensesDbQueries.promotionUpdate(
-            name, startDate, endDate, discountType, discountValue, applicableToNew, applicableToActive, id
-        )
+    fun updatePromotion(id: Long, name: String, startDate: String, endDate: String, discountType: String, discountValue: Double, applicableToNew: Long, applicableToActive: Long) {
+        database.expensesDbQueries.promotionUpdate(name, startDate, endDate, discountType, discountValue, applicableToNew, applicableToActive, id)
     }
 
     fun deletePromotion(id: Long) {
@@ -1057,17 +675,8 @@ class Repository(private val database: AppDatabaseBaby) {
     }
 
     // --- EventEntity ---
-    fun insertEvent(
-        name: String,
-        description: String?,
-        eventDate: String,
-        type: String,
-        cost: Double,
-        ticketsAvailable: Long
-    ) {
-        database.expensesDbQueries.eventCreate(
-            name, description, eventDate, type, cost, ticketsAvailable
-        )
+    fun insertEvent(name: String, description: String?, eventDate: String, type: String, cost: Double, ticketsAvailable: Long) {
+        database.expensesDbQueries.eventCreate(name, description, eventDate, type, cost, ticketsAvailable)
     }
 
     fun getAllEvents(): List<EventEntity> {
@@ -1078,18 +687,8 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.eventSelectById(id).executeAsOneOrNull()
     }
 
-    fun updateEvent(
-        id: Long,
-        name: String,
-        description: String?,
-        eventDate: String,
-        type: String,
-        cost: Double,
-        ticketsAvailable: Long
-    ) {
-        database.expensesDbQueries.eventUpdate(
-            name, description, eventDate, type, cost, ticketsAvailable, id
-        )
+    fun updateEvent(id: Long, name: String, description: String?, eventDate: String, type: String, cost: Double, ticketsAvailable: Long) {
+        database.expensesDbQueries.eventUpdate(name, description, eventDate, type, cost, ticketsAvailable, id)
     }
 
     fun deleteEvent(id: Long) {
@@ -1100,325 +699,13 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.eventCount().executeAsOne()
     }
 
-    // --- AdministrativeEntity ---
-    fun insertAdministrative(
-        franchiseId: Long,
-        firstName: String,
-        lastNamePaternal: String?,
-        lastNameMaternal: String?,
-        gender: String?,
-        birthDate: String?,
-        nationality: String?,
-        taxId: String?,
-        nss: String?,
-        phone: String?,
-        email: String?,
-        addressStreet: String?,
-        addressZip: String?,
-        emergencyContactName: String?,
-        emergencyContactPhone: String?,
-        position: String,
-        salary: Double,
-        startDate: String,
-        active: Long = 1
-    ) {
-        database.expensesDbQueries.administrativeCreate(
-            franchiseId, firstName, lastNamePaternal, lastNameMaternal, gender, birthDate, nationality,
-            taxId, nss, phone, email, addressStreet, addressZip, emergencyContactName,
-            emergencyContactPhone, position, salary, startDate, active
-        )
-    }
-
-    fun getAllAdministratives(): List<AdministrativeEntity> {
-        return database.expensesDbQueries.administrativeSelectAll().executeAsList()
-    }
-
-    fun getAdministrativeById(id: Long): AdministrativeEntity? {
-        return database.expensesDbQueries.administrativeSelectById(id).executeAsOneOrNull()
-    }
-
-    fun getAdministrativesByFranchiseId(franchiseId: Long): List<AdministrativeEntity> {
-        return database.expensesDbQueries.administrativeSelectByFranchiseId(franchiseId).executeAsList()
-    }
-
-    fun updateAdministrative(
-        id: Long,
-        franchiseId: Long,
-        firstName: String,
-        lastNamePaternal: String?,
-        lastNameMaternal: String?,
-        gender: String?,
-        birthDate: String?,
-        nationality: String?,
-        taxId: String?,
-        nss: String?,
-        phone: String?,
-        email: String?,
-        addressStreet: String?,
-        addressZip: String?,
-        emergencyContactName: String?,
-        emergencyContactPhone: String?,
-        position: String,
-        salary: Double,
-        startDate: String,
-        active: Long
-    ) {
-        database.expensesDbQueries.administrativeUpdate(
-            franchiseId, firstName, lastNamePaternal, lastNameMaternal, gender, birthDate, nationality,
-            taxId, nss, phone, email, addressStreet, addressZip, emergencyContactName,
-            emergencyContactPhone, position, salary, startDate, active, id
-        )
-    }
-
-    fun deleteAdministrative(id: Long) {
-        database.expensesDbQueries.administrativeDelete(id)
-    }
-
-    fun getAdministrativeCount(): Long {
-        return database.expensesDbQueries.administrativeCount().executeAsOne()
-    }
-
-    // --- TrialClassEntity ---
-    fun insertTrialClass(
-        franchiseId: Long,
-        studentId: Long?,
-        adultFirstName: String?,
-        adultLastNamePaternal: String?,
-        adultLastNameMaternal: String?,
-        phone: String?,
-        email: String?,
-        studentFirstName: String,
-        studentLastNamePaternal: String?,
-        studentLastNameMaternal: String?,
-        ageYears: Long,
-        ageMonths: Long,
-        disciplineId: Long,
-        requestDate: String,
-        scheduledDate: String?,
-        scheduledTime: String?,
-        classroomId: Long?,
-        teacherId: Long?,
-        attendance: Long?,
-        cancellationReason: String?,
-        howDiscovered: String?
-    ) {
-        database.expensesDbQueries.trialClassCreate(
-            franchiseId, studentId, adultFirstName, adultLastNamePaternal, adultLastNameMaternal,
-            phone, email, studentFirstName, studentLastNamePaternal, studentLastNameMaternal,
-            ageYears, ageMonths, disciplineId, requestDate, scheduledDate, scheduledTime,
-            classroomId, teacherId, attendance, cancellationReason, howDiscovered
-        )
-    }
-
-    fun getAllTrialClasses(): List<TrialClassEntity> {
-        return database.expensesDbQueries.trialClassSelectAll().executeAsList()
-    }
-
-    fun getTrialClassById(id: Long): TrialClassEntity? {
-        return database.expensesDbQueries.trialClassSelectById(id).executeAsOneOrNull()
-    }
-
-    fun getTrialClassesByFranchiseId(franchiseId: Long): List<TrialClassEntity> {
-        return database.expensesDbQueries.trialClassSelectByFranchiseId(franchiseId).executeAsList()
-    }
-
-    fun updateTrialClass(
-        id: Long,
-        franchiseId: Long,
-        studentId: Long?,
-        adultFirstName: String?,
-        adultLastNamePaternal: String?,
-        adultLastNameMaternal: String?,
-        phone: String?,
-        email: String?,
-        studentFirstName: String,
-        studentLastNamePaternal: String?,
-        studentLastNameMaternal: String?,
-        ageYears: Long,
-        ageMonths: Long,
-        disciplineId: Long,
-        requestDate: String,
-        scheduledDate: String?,
-        scheduledTime: String?,
-        classroomId: Long?,
-        teacherId: Long?,
-        attendance: Long?,
-        cancellationReason: String?,
-        howDiscovered: String?
-    ) {
-        database.expensesDbQueries.trialClassUpdate(
-            franchiseId, studentId, adultFirstName, adultLastNamePaternal, adultLastNameMaternal,
-            phone, email, studentFirstName, studentLastNamePaternal, studentLastNameMaternal,
-            ageYears, ageMonths, disciplineId, requestDate, scheduledDate, scheduledTime,
-            classroomId, teacherId, attendance, cancellationReason, howDiscovered, id
-        )
-    }
-
-    fun deleteTrialClass(id: Long) {
-        database.expensesDbQueries.trialClassDelete(id)
-    }
-
-    fun getTrialClassCount(): Long {
-        return database.expensesDbQueries.trialClassCount().executeAsOne()
-    }
-
-    // --- TeacherReportEntity ---
-    fun insertTeacherReport(
-        teacherId: Long,
-        franchiseId: Long,
-        reportType: String,
-        reportDate: String,
-        observation: String?
-    ) {
-        database.expensesDbQueries.teacherReportCreate(
-            teacherId, franchiseId, reportType, reportDate, observation
-        )
-    }
-
-    fun getAllTeacherReports(): List<TeacherReportEntity> {
-        return database.expensesDbQueries.teacherReportSelectAll().executeAsList()
-    }
-
-    fun getTeacherReportById(id: Long): TeacherReportEntity? {
-        return database.expensesDbQueries.teacherReportSelectById(id).executeAsOneOrNull()
-    }
-
-    fun getTeacherReportsByTeacherId(teacherId: Long): List<TeacherReportEntity> {
-        return database.expensesDbQueries.teacherReportSelectByTeacherId(teacherId).executeAsList()
-    }
-
-    fun updateTeacherReport(
-        id: Long,
-        teacherId: Long,
-        franchiseId: Long,
-        reportType: String,
-        reportDate: String,
-        observation: String?
-    ) {
-        database.expensesDbQueries.teacherReportUpdate(
-            teacherId, franchiseId, reportType, reportDate, observation, id
-        )
-    }
-
-    fun deleteTeacherReport(id: Long) {
-        database.expensesDbQueries.teacherReportDelete(id)
-    }
-
-    fun getTeacherReportCount(): Long {
-        return database.expensesDbQueries.teacherReportCount().executeAsOne()
-    }
-
-    // --- PrecioBaseEntity ---
-    fun insertPrecioBase(precio: Double) {
-        database.expensesDbQueries.precioBaseCreate(precio)
-    }
-
-    fun getAllPreciosBase(): List<PrecioBaseEntity> {
-        return database.expensesDbQueries.precioBaseSelectAll().executeAsList()
-    }
-
-    fun getPrecioBaseById(id: Long): PrecioBaseEntity? {
-        return database.expensesDbQueries.precioBaseSelectById(id).executeAsOneOrNull()
-    }
-
-    fun updatePrecioBase(id: Long, precio: Double) {
-        database.expensesDbQueries.precioBaseUpdate(precio, id)
-    }
-
-    fun deletePrecioBase(id: Long) {
-        database.expensesDbQueries.precioBaseDelete(id)
-    }
-
-    fun getPrecioBaseCount(): Long {
-        return database.expensesDbQueries.precioBaseCount().executeAsOne()
-    }
-
-    // --- MembershipEntity ---
-    fun insertMembership(name: String, monthsPaid: Long, monthsSaved: Double) {
-        database.expensesDbQueries.membershipCreate(name, monthsPaid, monthsSaved)
-    }
-
-    fun getAllMemberships(): List<MembershipEntity> {
-        return database.expensesDbQueries.membershipSelectAll().executeAsList()
-    }
-
-    fun getMembershipById(id: Long): MembershipEntity? {
-        return database.expensesDbQueries.membershipSelectById(id).executeAsOneOrNull()
-    }
-
-    fun updateMembership(id: Long, name: String, monthsPaid: Long, monthsSaved: Double) {
-        database.expensesDbQueries.membershipUpdate(name, monthsPaid, monthsSaved, id)
-    }
-
-    fun deleteMembership(id: Long) {
-        database.expensesDbQueries.membershipDelete(id)
-    }
-
-    fun getMembershipCount(): Long {
-        return database.expensesDbQueries.membershipCount().executeAsOne()
-    }
-
-    // --- PaymentEntity ---
-    fun insertPayment(
-        studentId: Long,
-        amount: Double,
-        description: String,
-        paymentDate: Long,
-        baseAmount: Double,
-        discount: Double,
-        membershipInfo: String?,
-        inscriptionId: Long?,
-        paymentMethod: String // ← efectivo, transferencia, tarjeta
-    ) {
-        database.expensesDbQueries.insertPayment(
-            studentId, amount, description, paymentDate, baseAmount, discount, membershipInfo, inscriptionId, paymentMethod
-        )
-    }
-
-    fun getAllPayments(): List<PaymentEntity> {
-        return database.expensesDbQueries.getAllPayments().executeAsList()
-    }
-
-    fun getPaymentById(id: Long): PaymentEntity? {
-        return database.expensesDbQueries.getPaymentById(id).executeAsOneOrNull()
-    }
-
-    fun getPaymentsByStudentId(studentId: Long): List<PaymentEntity> {
-        return database.expensesDbQueries.getPaymentsByStudentId(studentId).executeAsList()
-    }
-
-    fun updatePayment(
-        id: Long,
-        studentId: Long,
-        amount: Double,
-        description: String,
-        paymentDate: Long,
-        baseAmount: Double,
-        discount: Double,
-        membershipInfo: String?,
-        inscriptionId: Long?,
-        paymentMethod: String
-    ) {
-        database.expensesDbQueries.updatePayment(
-            studentId, amount, description, paymentDate, baseAmount, discount, membershipInfo, inscriptionId, paymentMethod, id
-        )
-    }
-
-    fun deletePayment(id: Long) {
-        database.expensesDbQueries.deletePayment(id)
-    }
-
-    fun getPaymentCount(): Long {
-        return database.expensesDbQueries.paymentCount().executeAsOne()
-    }
-
-    // --- EventPaymentEntity ---
+    // --- EventPaymentEntity ---  ✅ AGREGADO COMPLETO
     fun insertEventPayment(
         studentId: Long,
         franchiseId: Long,
         amount: Double,
         paymentDate: String,
-        paymentType: String, // efectivo, transferencia, tarjeta
+        paymentType: String,
         eventId: Long?,
         reference: String?
     ) {
@@ -1462,7 +749,163 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.eventPaymentCount().executeAsOne()
     }
 
-    // --- InscriptionEntity ---
+    // --- AdministrativeEntity ---
+    fun insertAdministrative(
+        franchiseId: Long, firstName: String, lastNamePaternal: String?, lastNameMaternal: String?,
+        gender: String?, birthDate: String?, nationality: String?, taxId: String?, nss: String?,
+        phone: String?, email: String?, addressStreet: String?, addressZip: String?,
+        emergencyContactName: String?, emergencyContactPhone: String?, position: String,
+        salary: Double, startDate: String, active: Long = 1
+    ) {
+        database.expensesDbQueries.administrativeCreate(
+            franchiseId, firstName, lastNamePaternal, lastNameMaternal, gender, birthDate, nationality,
+            taxId, nss, phone, email, addressStreet, addressZip, emergencyContactName,
+            emergencyContactPhone, position, salary, startDate, active
+        )
+    }
+
+    fun getAllAdministratives(): List<AdministrativeEntity> {
+        return database.expensesDbQueries.administrativeSelectAll().executeAsList()
+    }
+
+    fun getAdministrativeById(id: Long): AdministrativeEntity? {
+        return database.expensesDbQueries.administrativeSelectById(id).executeAsOneOrNull()
+    }
+
+    fun getAdministrativesByFranchiseId(franchiseId: Long): List<AdministrativeEntity> {
+        return database.expensesDbQueries.administrativeSelectByFranchiseId(franchiseId).executeAsList()
+    }
+
+    fun updateAdministrative(
+        id: Long, franchiseId: Long, firstName: String, lastNamePaternal: String?, lastNameMaternal: String?,
+        gender: String?, birthDate: String?, nationality: String?, taxId: String?, nss: String?,
+        phone: String?, email: String?, addressStreet: String?, addressZip: String?,
+        emergencyContactName: String?, emergencyContactPhone: String?, position: String,
+        salary: Double, startDate: String, active: Long
+    ) {
+        database.expensesDbQueries.administrativeUpdate(
+            franchiseId, firstName, lastNamePaternal, lastNameMaternal, gender, birthDate, nationality,
+            taxId, nss, phone, email, addressStreet, addressZip, emergencyContactName,
+            emergencyContactPhone, position, salary, startDate, active, id
+        )
+    }
+
+    fun deleteAdministrative(id: Long) {
+        database.expensesDbQueries.administrativeDelete(id)
+    }
+
+    fun getAdministrativeCount(): Long {
+        return database.expensesDbQueries.administrativeCount().executeAsOne()
+    }
+
+    // --- TrialClassEntity ---
+    fun insertTrialClass(
+        franchiseId: Long, studentId: Long?, adultFirstName: String?, adultLastNamePaternal: String?,
+        adultLastNameMaternal: String?, phone: String?, email: String?, studentFirstName: String,
+        studentLastNamePaternal: String?, studentLastNameMaternal: String?, ageYears: Long,
+        ageMonths: Long, disciplineId: Long, requestDate: String, scheduledDate: String?,
+        scheduledTime: String?, classroomId: Long?, teacherId: Long?, attendance: Long?,
+        cancellationReason: String?, howDiscovered: String?
+    ) {
+        database.expensesDbQueries.trialClassCreate(
+            franchiseId, studentId, adultFirstName, adultLastNamePaternal, adultLastNameMaternal,
+            phone, email, studentFirstName, studentLastNamePaternal, studentLastNameMaternal,
+            ageYears, ageMonths, disciplineId, requestDate, scheduledDate, scheduledTime,
+            classroomId, teacherId, attendance, cancellationReason, howDiscovered
+        )
+    }
+
+    fun getAllTrialClasses(): List<TrialClassEntity> {
+        return database.expensesDbQueries.trialClassSelectAll().executeAsList()
+    }
+
+    fun getTrialClassById(id: Long): TrialClassEntity? {
+        return database.expensesDbQueries.trialClassSelectById(id).executeAsOneOrNull()
+    }
+
+    fun getTrialClassesByFranchiseId(franchiseId: Long): List<TrialClassEntity> {
+        return database.expensesDbQueries.trialClassSelectByFranchiseId(franchiseId).executeAsList()
+    }
+
+    fun updateTrialClass(
+        id: Long, franchiseId: Long, studentId: Long?, adultFirstName: String?, adultLastNamePaternal: String?,
+        adultLastNameMaternal: String?, phone: String?, email: String?, studentFirstName: String,
+        studentLastNamePaternal: String?, studentLastNameMaternal: String?, ageYears: Long,
+        ageMonths: Long, disciplineId: Long, requestDate: String, scheduledDate: String?,
+        scheduledTime: String?, classroomId: Long?, teacherId: Long?, attendance: Long?,
+        cancellationReason: String?, howDiscovered: String?
+    ) {
+        database.expensesDbQueries.trialClassUpdate(
+            franchiseId, studentId, adultFirstName, adultLastNamePaternal, adultLastNameMaternal,
+            phone, email, studentFirstName, studentLastNamePaternal, studentLastNameMaternal,
+            ageYears, ageMonths, disciplineId, requestDate, scheduledDate, scheduledTime,
+            classroomId, teacherId, attendance, cancellationReason, howDiscovered, id
+        )
+    }
+
+    fun deleteTrialClass(id: Long) {
+        database.expensesDbQueries.trialClassDelete(id)
+    }
+
+    fun getTrialClassCount(): Long {
+        return database.expensesDbQueries.trialClassCount().executeAsOne()
+    }
+
+    // --- TeacherReportEntity ---
+    fun insertTeacherReport(teacherId: Long, franchiseId: Long, reportType: String, reportDate: String, observation: String?) {
+        database.expensesDbQueries.teacherReportCreate(teacherId, franchiseId, reportType, reportDate, observation)
+    }
+
+    fun getAllTeacherReports(): List<TeacherReportEntity> {
+        return database.expensesDbQueries.teacherReportSelectAll().executeAsList()
+    }
+
+    fun getTeacherReportById(id: Long): TeacherReportEntity? {
+        return database.expensesDbQueries.teacherReportSelectById(id).executeAsOneOrNull()
+    }
+
+    fun getTeacherReportsByTeacherId(teacherId: Long): List<TeacherReportEntity> {
+        return database.expensesDbQueries.teacherReportSelectByTeacherId(teacherId).executeAsList()
+    }
+
+    fun updateTeacherReport(id: Long, teacherId: Long, franchiseId: Long, reportType: String, reportDate: String, observation: String?) {
+        database.expensesDbQueries.teacherReportUpdate(teacherId, franchiseId, reportType, reportDate, observation, id)
+    }
+
+    fun deleteTeacherReport(id: Long) {
+        database.expensesDbQueries.teacherReportDelete(id)
+    }
+
+    fun getTeacherReportCount(): Long {
+        return database.expensesDbQueries.teacherReportCount().executeAsOne()
+    }
+
+    // --- PrecioBaseEntity ---
+    fun insertPrecioBase(precio: Double) {
+        database.expensesDbQueries.precioBaseCreate(precio)
+    }
+
+    fun getAllPreciosBase(): List<PrecioBaseEntity> {
+        return database.expensesDbQueries.precioBaseSelectAll().executeAsList()
+    }
+
+    fun getPrecioBaseById(id: Long): PrecioBaseEntity? {
+        return database.expensesDbQueries.precioBaseSelectById(id).executeAsOneOrNull()
+    }
+
+    fun updatePrecioBase(id: Long, precio: Double) {
+        database.expensesDbQueries.precioBaseUpdate(precio, id)
+    }
+
+    fun deletePrecioBase(id: Long) {
+        database.expensesDbQueries.precioBaseDelete(id)
+    }
+
+    fun getPrecioBaseCount(): Long {
+        return database.expensesDbQueries.precioBaseCount().executeAsOne()
+    }
+
+    // --- InscriptionEntity ---  ✅ AGREGADO COMPLETO
     fun insertInscription(precio: Double) {
         database.expensesDbQueries.inscriptionCreate(precio)
     }
@@ -1487,14 +930,88 @@ class Repository(private val database: AppDatabaseBaby) {
         return database.expensesDbQueries.inscriptionCount().executeAsOne()
     }
 
-    // --- Consultas personalizadas ---
+    // --- MembershipEntity ---
+    fun insertMembership(name: String, monthsPaid: Long, monthsSaved: Double) {
+        database.expensesDbQueries.membershipCreate(name, monthsPaid, monthsSaved)
+    }
 
-    // Total de sucursales activas
+    fun getAllMemberships(): List<MembershipEntity> {
+        return database.expensesDbQueries.membershipSelectAll().executeAsList()
+    }
+
+    fun getMembershipById(id: Long): MembershipEntity? {
+        return database.expensesDbQueries.membershipSelectById(id).executeAsOneOrNull()
+    }
+
+    fun updateMembership(id: Long, name: String, monthsPaid: Long, monthsSaved: Double) {
+        database.expensesDbQueries.membershipUpdate(name, monthsPaid, monthsSaved, id)
+    }
+
+    fun deleteMembership(id: Long) {
+        database.expensesDbQueries.membershipDelete(id)
+    }
+
+    fun getMembershipCount(): Long {
+        return database.expensesDbQueries.membershipCount().executeAsOne()
+    }
+
+    // --- PaymentEntity ---
+    fun insertPayment(
+        studentId: Long,
+        amount: Double,
+        description: String,
+        paymentDate: Long,
+        baseAmount: Double,
+        discount: Double,
+        membershipInfo: String?,
+        inscriptionId: Long?
+    ) {
+        database.expensesDbQueries.insertPayment(
+            studentId, amount, description, paymentDate, baseAmount, discount, membershipInfo, inscriptionId
+        )
+    }
+
+    fun getAllPayments(): List<PaymentEntity> {
+        return database.expensesDbQueries.getAllPayments().executeAsList()
+    }
+
+    fun getPaymentById(id: Long): PaymentEntity? {
+        return database.expensesDbQueries.getPaymentById(id).executeAsOneOrNull()
+    }
+
+    fun getPaymentsByStudentId(studentId: Long): List<PaymentEntity> {
+        return database.expensesDbQueries.getPaymentsByStudentId(studentId).executeAsList()
+    }
+
+    fun updatePayment(
+        id: Long,
+        studentId: Long,
+        amount: Double,
+        description: String,
+        paymentDate: Long,
+        baseAmount: Double,
+        discount: Double,
+        membershipInfo: String?,
+        inscriptionId: Long?
+    ) {
+        database.expensesDbQueries.updatePayment(
+            studentId, amount, description, paymentDate, baseAmount, discount, membershipInfo, inscriptionId, id
+        )
+    }
+
+    fun deletePayment(id: Long) {
+        database.expensesDbQueries.deletePayment(id)
+    }
+
+    fun getPaymentCount(): Long {
+        return database.expensesDbQueries.paymentCount().executeAsOne()
+    }
+
+    // --- Otras consultas personalizadas ---
     fun getActiveBranchesCount(): Long {
         return database.expensesDbQueries.activeBranchesCount().executeAsOne()
     }
 
-    // Total de alumnos por género
     fun getStudentsByGender(): Pair<Long, Long> {
         val students = database.expensesDbQueries.studentSelectAll().executeAsList()
         val maleCount = students.count { it.gender.equals("masculino", ignoreCase = true) }.toLong()
@@ -1502,43 +1019,9 @@ class Repository(private val database: AppDatabaseBaby) {
         return Pair(maleCount, femaleCount)
     }
 
-    // Cumpleaños del mes (filtrados por unidad)
-    fun getStudentsByBirthMonthAndFranchise(month: String, franchiseId: Long): List<StudentEntity> {
-        return database.expensesDbQueries.studentSelectByBirthMonthAndFranchise(month, franchiseId).executeAsList()
-    }
-
-    // Total de ingresos globales
-    fun getTotalGlobalIncome(): Double {
-        return database.expensesDbQueries.getTotalGlobalIncome().executeAsOne()
-    }
-
-    // Ingresos por alumno
-    fun getIncomeByStudentId(studentId: Long): Double {
-        return database.expensesDbQueries.getIncomeByStudentId(studentId).executeAsOne()
-    }
-
-    // Ingresos por unidad
-    fun getIncomeByFranchiseId(franchiseId: Long): Double {
-        return database.expensesDbQueries.getIncomeByFranchiseId(franchiseId).executeAsOne()
-    }
-
-    // Total de alumnos por unidad
-    fun getTotalStudentsByFranchise(franchiseId: Long): Long {
-        return database.expensesDbQueries.getStudentCountByFranchise(franchiseId).executeAsOne()
-    }
-
     fun initializeData() {
-        val roleCount = getRoleCount()
-        if (roleCount == 0L) {
-            insertRole("Administrativo", "Gestión administrativa general")
-            insertRole("Operaciones", "Supervisión y control operativo")
-            insertRole("Franquiciatario", "Dueño o encargado de una franquicia")
-            insertRole("Maestro", "Docente asignado a clases")
-            insertRole("Alumno", "Usuario estudiante del sistema")
-        }
-
-        val userCount = getUserCount()
-        if (userCount == 0L) {
+        val existingUsers = getUserCount()
+        if (existingUsers == 0L) {
             insertUser(
                 username = "Adminpresi12",
                 password = "Adminpresi12",
