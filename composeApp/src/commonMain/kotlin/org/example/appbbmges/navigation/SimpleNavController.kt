@@ -50,9 +50,6 @@ class SimpleNavController(initialScreen: Screen) {
         return backStack.isNotEmpty()
     }
 
-
-     //limpia todo el backstack y vuelve a la pantalla inicial
-
     fun navigateAndClearBackStack(screen: Screen) {
         backStack.clear()
         _currentScreen.update { screen }

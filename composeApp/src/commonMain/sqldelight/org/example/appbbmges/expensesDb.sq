@@ -1,14 +1,13 @@
 -- =======================
--- Tabla: RoleEntity
+-- Base de datos de Baby Ballet Marbet
 -- =======================
 
+-- Crear tabla RoleEntity
 CREATE TABLE RoleEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     description TEXT
 );
-
--- ========== CONSULTAS RoleEntity ==========
 
 -- Crear nuevo rol
 roleCreate:
@@ -37,12 +36,9 @@ DELETE FROM RoleEntity WHERE id = ?;
 roleCount:
 SELECT COUNT(*) FROM RoleEntity;
 
--- =======================
--- Tabla: UserEntity
--- =======================
-
+-- Crear tabla UserEntity
 CREATE TABLE UserEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
@@ -75,18 +71,12 @@ UPDATE UserEntity
 SET active = 0, updated_at = ?
 WHERE id = ?;
 
--- =======================
--- Tabla: UserRoleEntity
--- =======================
-
 CREATE TABLE UserRoleEntity (
     user_id INTEGER NOT NULL REFERENCES UserEntity(id) ON DELETE CASCADE,
     role_id INTEGER NOT NULL REFERENCES RoleEntity(id) ON DELETE CASCADE,
     franchise_id INTEGER REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
     PRIMARY KEY (user_id, role_id, franchise_id)
 );
-
--- ========== CONSULTAS UserRoleEntity ==========
 
 -- Asignar un rol a un usuario en una franquicia (puede ser NULL para global)
 userRoleAssign:
@@ -110,14 +100,11 @@ WHERE ur.role_id = ?;
 -- Eliminar rol de un usuario (opcional por franquicia)
 userRoleDelete:
 DELETE FROM UserRoleEntity
-WHERE user_id = ? AND role_id = ? AND (franchise_id IS ? OR franchise_id = ?);
-
--- =======================
--- Tabla: FranchiseEntity
--- =======================
+WHERE user_id = ? AND role_id = ?
+  AND (franchise_id = ? OR (franchise_id IS NULL AND ? IS NULL));
 
 CREATE TABLE FranchiseEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     email TEXT,
     phone TEXT,
@@ -130,8 +117,6 @@ CREATE TABLE FranchiseEntity (
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
     address_id INTEGER REFERENCES AddressEntity(id) ON DELETE SET NULL
 );
-
--- ========== CONSULTAS FranchiseEntity ==========
 
 -- Crear una nueva franquicia
 franchiseCreate:
@@ -170,12 +155,8 @@ SELECT
 FROM FranchiseEntity f
 LEFT JOIN AddressEntity a ON a.id = f.address_id;
 
--- =======================
--- Tabla: AddressEntity
--- =======================
-
 CREATE TABLE AddressEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     street TEXT,
     number TEXT,
     neighborhood TEXT,
@@ -184,8 +165,6 @@ CREATE TABLE AddressEntity (
     state TEXT,
     country TEXT
 );
-
--- ========== CONSULTAS AddressEntity ==========
 
 -- Crear nueva dirección
 addressCreate:
@@ -203,20 +182,14 @@ UPDATE AddressEntity
 SET street = ?, number = ?, neighborhood = ?, zip = ?, city = ?, state = ?, country = ?
 WHERE id = ?;
 
--- Eliminar dirección (cascada depende de la tabla que la use)
+-- Eliminar dirección
 addressDelete:
 DELETE FROM AddressEntity WHERE id = ?;
 
--- ============================
--- Tabla: LevelEntity
--- ============================
-
 CREATE TABLE LevelEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     name TEXT NOT NULL UNIQUE
 );
-
--- ========== CONSULTAS LevelEntity ==========
 
 -- Crear nuevo nivel
 levelCreate:
@@ -245,16 +218,10 @@ DELETE FROM LevelEntity WHERE id = ?;
 levelCount:
 SELECT COUNT(*) FROM LevelEntity;
 
--- ============================
--- Tabla: GradeEntity
--- ============================
-
 CREATE TABLE GradeEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     name TEXT NOT NULL UNIQUE
 );
-
--- ========== CONSULTAS GradeEntity ==========
 
 -- Crear nuevo grado
 gradeCreate:
@@ -283,16 +250,10 @@ DELETE FROM GradeEntity WHERE id = ?;
 gradeCount:
 SELECT COUNT(*) FROM GradeEntity;
 
--- ============================
--- Tabla: DisciplineEntity
--- ============================
-
 CREATE TABLE DisciplineEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     name TEXT NOT NULL UNIQUE
 );
-
--- ========== CONSULTAS DisciplineEntity ==========
 
 -- Crear nueva disciplina
 disciplineCreate:
@@ -325,19 +286,13 @@ DELETE FROM DisciplineEntity WHERE id = ?;
 disciplineCount:
 SELECT COUNT(*) FROM DisciplineEntity;
 
--- ===============================================
--- Tabla: DisciplineLevelGradeEntity (CORREGIDA)
--- ===============================================
-
 CREATE TABLE DisciplineLevelGradeEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     discipline_id INTEGER NOT NULL REFERENCES DisciplineEntity(id) ON DELETE CASCADE,
     level_id INTEGER NOT NULL REFERENCES LevelEntity(id) ON DELETE RESTRICT,
     grade_id INTEGER NOT NULL REFERENCES GradeEntity(id) ON DELETE RESTRICT,
     UNIQUE(discipline_id, level_id, grade_id)
 );
-
--- ========== CONSULTAS DisciplineLevelGradeEntity ==========
 
 -- Crear nueva combinación válida (disciplina + nivel + grado)
 disciplineLevelGradeCreate:
@@ -379,17 +334,11 @@ WHERE discipline_id = ? AND level_id = ? AND grade_id = ?;
 disciplineLevelGradeCount:
 SELECT COUNT(*) FROM DisciplineLevelGradeEntity;
 
--- ===============================================
--- Tabla: FranchiseDisciplineEntity
--- ===============================================
-
 CREATE TABLE FranchiseDisciplineEntity (
     franchise_id INTEGER NOT NULL REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
     discipline_level_grade_id INTEGER NOT NULL REFERENCES DisciplineLevelGradeEntity(id) ON DELETE RESTRICT,
     PRIMARY KEY (franchise_id, discipline_level_grade_id)
 );
-
--- ========== CONSULTAS FranchiseDisciplineEntity ==========
 
 -- Activar disciplina en franquicia
 franchiseDisciplineCreate:
@@ -420,18 +369,12 @@ WHERE franchise_id = ? AND discipline_level_grade_id = ?;
 franchiseDisciplineCount:
 SELECT COUNT(*) FROM FranchiseDisciplineEntity WHERE franchise_id = ?;
 
--- ============================
--- Tabla: ClassroomEntity
--- ============================
-
 CREATE TABLE ClassroomEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     franchise_id INTEGER NOT NULL REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     UNIQUE(franchise_id, name)
 );
-
--- ========== CONSULTAS ClassroomEntity ==========
 
 -- Crear nuevo salón
 classroomCreate:
@@ -460,12 +403,8 @@ DELETE FROM ClassroomEntity WHERE id = ?;
 classroomSelectAll:
 SELECT * FROM ClassroomEntity;
 
--- ============================
--- Tabla: TeacherEntity
--- ============================
-
 CREATE TABLE TeacherEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     user_id INTEGER UNIQUE REFERENCES UserEntity(id) ON DELETE CASCADE,
     first_name TEXT NOT NULL,
     last_name_paternal TEXT,
@@ -477,8 +416,6 @@ CREATE TABLE TeacherEntity (
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
     vetoed INTEGER NOT NULL DEFAULT 0 CHECK (vetoed IN (0,1))
 );
-
--- ========== CONSULTAS TeacherEntity ==========
 
 -- Crear nuevo profesor
 teacherCreate:
@@ -511,13 +448,8 @@ DELETE FROM TeacherEntity WHERE id = ?;
 teacherCount:
 SELECT COUNT(*) FROM TeacherEntity;
 
-
--- ============================
--- Tabla: ScheduleEntity
--- ============================
-
 CREATE TABLE ScheduleEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     franchise_id INTEGER NOT NULL REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
     classroom_id INTEGER NOT NULL REFERENCES ClassroomEntity(id) ON DELETE CASCADE,
     teacher_id INTEGER NOT NULL REFERENCES TeacherEntity(id) ON DELETE CASCADE,
@@ -526,8 +458,6 @@ CREATE TABLE ScheduleEntity (
     start_minutes INTEGER NOT NULL,
     end_minutes INTEGER NOT NULL
 );
-
--- ========== CONSULTAS ScheduleEntity ==========
 
 -- Crear nuevo horario
 scheduleCreate:
@@ -570,12 +500,8 @@ JOIN GradeEntity g ON g.id = dlg.grade_id;
 scheduleDelete:
 DELETE FROM ScheduleEntity WHERE id = ?;
 
--- ============================
--- Tabla: StudentEntity
--- ============================
-
 CREATE TABLE StudentEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     user_id INTEGER UNIQUE REFERENCES UserEntity(id) ON DELETE SET NULL,
     franchise_id INTEGER NOT NULL REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
     first_name TEXT NOT NULL,
@@ -588,8 +514,6 @@ CREATE TABLE StudentEntity (
     address_id INTEGER REFERENCES AddressEntity(id) ON DELETE SET NULL,
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1))
 );
-
--- ========== CONSULTAS StudentEntity ==========
 
 -- Crear nuevo alumno
 studentCreate:
@@ -614,18 +538,11 @@ DELETE FROM StudentEntity WHERE id = ?;
 studentCount:
 SELECT COUNT(*) FROM StudentEntity;
 
-
--- ============================
--- Tabla: StudentScheduleEntity
--- ============================
-
 CREATE TABLE StudentScheduleEntity (
     student_id INTEGER NOT NULL REFERENCES StudentEntity(id) ON DELETE CASCADE,
     schedule_id INTEGER NOT NULL REFERENCES ScheduleEntity(id) ON DELETE CASCADE,
     PRIMARY KEY (student_id, schedule_id)
 );
-
--- ========== CONSULTAS StudentScheduleEntity ==========
 
 -- Inscribir alumno a un horario
 studentScheduleCreate:
@@ -655,20 +572,14 @@ WHERE student_id = ? AND schedule_id = ?;
 studentScheduleCount:
 SELECT COUNT(*) FROM StudentScheduleEntity WHERE student_id = ?;
 
--- ============================
--- Tabla: ClassAttendanceEntity
--- ============================
-
 CREATE TABLE ClassAttendanceEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     schedule_id INTEGER NOT NULL REFERENCES ScheduleEntity(id) ON DELETE CASCADE,
     teacher_id INTEGER NOT NULL REFERENCES TeacherEntity(id) ON DELETE CASCADE,
     date_ts INTEGER NOT NULL,
     duration_minutes INTEGER NOT NULL,
     validated INTEGER NOT NULL DEFAULT 0 CHECK (validated IN (0,1))
 );
-
--- ========== CONSULTAS ClassAttendanceEntity ==========
 
 -- Registrar asistencia a una clase
 insertClassAttendance:
@@ -698,18 +609,12 @@ countTeacherAttendance:
 SELECT COUNT(*) FROM ClassAttendanceEntity
 WHERE teacher_id = ? AND date_ts BETWEEN ? AND ?;
 
--- ===============================================
--- Tabla: StudentClassAttendanceEntity
--- ===============================================
-
 CREATE TABLE StudentClassAttendanceEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     student_id INTEGER NOT NULL REFERENCES StudentEntity(id) ON DELETE CASCADE,
     class_attendance_id INTEGER NOT NULL REFERENCES ClassAttendanceEntity(id) ON DELETE CASCADE,
     attended INTEGER NOT NULL DEFAULT 1 CHECK (attended IN (0,1))
 );
-
--- ========== CONSULTAS StudentClassAttendanceEntity ==========
 
 -- Registrar asistencia de alumno a una clase
 studentAttendanceCreate:
@@ -746,12 +651,8 @@ studentAttendanceCount:
 SELECT COUNT(*) FROM StudentClassAttendanceEntity
 WHERE student_id = ? AND attended = 1;
 
--- ============================
--- Tabla: TeacherPaymentEntity
--- ============================
-
 CREATE TABLE TeacherPaymentEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     teacher_id INTEGER NOT NULL REFERENCES TeacherEntity(id) ON DELETE CASCADE,
     franchise_id INTEGER NOT NULL REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
     total_minutes INTEGER NOT NULL,
@@ -761,8 +662,6 @@ CREATE TABLE TeacherPaymentEntity (
     paid_ts INTEGER NOT NULL,
     notes TEXT
 );
-
--- ========== CONSULTAS TeacherPaymentEntity ==========
 
 -- Registrar un pago
 insertTeacherPayment:
@@ -791,20 +690,14 @@ SELECT * FROM TeacherPaymentEntity WHERE id = ?;
 deleteTeacherPayment:
 DELETE FROM TeacherPaymentEntity WHERE id = ?;
 
--- ================================
--- Tabla: TeacherHourlyRateEntity
--- ================================
-
 CREATE TABLE TeacherHourlyRateEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     teacher_id INTEGER NOT NULL REFERENCES TeacherEntity(id) ON DELETE CASCADE,
     franchise_id INTEGER NOT NULL REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
     rate_cents INTEGER NOT NULL,
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
     created_ts INTEGER NOT NULL
 );
-
--- ========== CONSULTAS TeacherHourlyRateEntity ==========
 
 -- Crear nueva tarifa por hora
 insertTeacherHourlyRate:
@@ -831,18 +724,14 @@ SELECT * FROM TeacherHourlyRateEntity
 WHERE teacher_id = ?
 ORDER BY created_ts DESC;
 
--- ============================
--- Tabla: FamilyEntity
--- ============================
+CREATE INDEX idx_teacher_franchise ON TeacherHourlyRateEntity(teacher_id, franchise_id);
 
 CREATE TABLE FamilyEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     responsible_adult_name TEXT NOT NULL,
     phone TEXT,
     email TEXT
 );
-
--- ========== CONSULTAS FamilyEntity ==========
 
 -- Crear familia
 familyCreate:
@@ -861,17 +750,11 @@ SELECT * FROM FamilyEntity WHERE id = ?;
 familyDeleteById:
 DELETE FROM FamilyEntity WHERE id = ?;
 
--- ======================================
--- Tabla: StudentFamilyEntity
--- ======================================
-
 CREATE TABLE StudentFamilyEntity (
     student_id INTEGER NOT NULL REFERENCES StudentEntity(id) ON DELETE CASCADE,
     family_id INTEGER NOT NULL REFERENCES FamilyEntity(id) ON DELETE CASCADE,
     PRIMARY KEY (student_id, family_id)
 );
-
--- ========== CONSULTAS StudentFamilyEntity ==========
 
 -- Asignar alumno a familia
 assignStudentToFamily:
@@ -895,19 +778,13 @@ WHERE sf.family_id = (
 )
 AND s.id != ?;
 
--- ================================================
--- Tabla: StudentAuthorizedAdultEntity
--- ================================================
-
 CREATE TABLE StudentAuthorizedAdultEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     student_id INTEGER NOT NULL REFERENCES StudentEntity(id) ON DELETE CASCADE,
     first_name TEXT NOT NULL,
     last_name_paternal TEXT,
     last_name_maternal TEXT
 );
-
--- ========== CONSULTAS StudentAuthorizedAdultEntity ==========
 
 -- Agregar adulto autorizado
 authorizedAdultCreate:
@@ -924,12 +801,8 @@ WHERE student_id = ?;
 authorizedAdultDelete:
 DELETE FROM StudentAuthorizedAdultEntity WHERE id = ?;
 
--- ================================
--- Tabla: AdministrativeEntity
--- ================================
-
 CREATE TABLE AdministrativeEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     user_id INTEGER UNIQUE REFERENCES UserEntity(id) ON DELETE CASCADE,
     franchise_id INTEGER NOT NULL REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
     first_name TEXT NOT NULL,
@@ -943,8 +816,6 @@ CREATE TABLE AdministrativeEntity (
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
     address_id INTEGER REFERENCES AddressEntity(id)
 );
-
--- ========== CONSULTAS AdministrativeEntity ==========
 
 -- Crear administrativo
 administrativeCreate:
@@ -977,36 +848,36 @@ administrativeDelete:
 DELETE FROM AdministrativeEntity WHERE id = ?;
 
 CREATE TABLE BasePriceCatalogEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
     description TEXT,
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
     created_ts INTEGER NOT NULL
 );
 
--- Consultas
-
+-- Crear nuevo precio base en catálogo
 basePriceCatalogCreate:
 INSERT INTO BasePriceCatalogEntity (price_cents, description, active, created_ts)
 VALUES (?, ?, ?, ?);
 
+-- Obtener precios activos
 basePriceCatalogAll:
 SELECT * FROM BasePriceCatalogEntity WHERE active = 1;
 
 CREATE TABLE FranchiseBasePriceEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     franchise_id INTEGER NOT NULL REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
     base_price_id INTEGER NOT NULL REFERENCES BasePriceCatalogEntity(id) ON DELETE RESTRICT,
     active INTEGER NOT NULL DEFAULT 1,
     assigned_ts INTEGER NOT NULL
 );
 
--- Consultas
-
+-- Asignar precio base a franquicia
 franchiseBasePriceAssign:
 INSERT INTO FranchiseBasePriceEntity (franchise_id, base_price_id, active, assigned_ts)
 VALUES (?, ?, ?, ?);
 
+-- Obtener precio activo por franquicia
 activeBasePriceByFranchise:
 SELECT bpc.*
 FROM FranchiseBasePriceEntity fbp
@@ -1014,13 +885,14 @@ JOIN BasePriceCatalogEntity bpc ON bpc.id = fbp.base_price_id
 WHERE fbp.franchise_id = ? AND fbp.active = 1
 LIMIT 1;
 
+-- Desactivar precios anteriores
 deactivateBasePricesForFranchise:
 UPDATE FranchiseBasePriceEntity
 SET active = 0
 WHERE franchise_id = ?;
 
 CREATE TABLE MonthlyFeeEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     franchise_id INTEGER NOT NULL REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
     discipline_count INTEGER NOT NULL CHECK (discipline_count > 0),
     price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
@@ -1029,25 +901,26 @@ CREATE TABLE MonthlyFeeEntity (
     created_ts INTEGER NOT NULL
 );
 
--- Consultas
-
+-- Crear tarifa mensual
 monthlyFeeCreate:
 INSERT INTO MonthlyFeeEntity (
     franchise_id, discipline_count, price_cents, discount_percent, active, created_ts
 ) VALUES (?, ?, ?, ?, ?, ?);
 
+-- Obtener tarifas activas por franquicia
 activeMonthlyFeesByFranchise:
 SELECT * FROM MonthlyFeeEntity
 WHERE franchise_id = ? AND active = 1
 ORDER BY discipline_count;
 
+-- Desactivar tarifas anteriores
 deactivateMonthlyFees:
 UPDATE MonthlyFeeEntity
 SET active = 0
 WHERE franchise_id = ?;
 
 CREATE TABLE MembershipEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     months_paid INTEGER NOT NULL,
     months_saved REAL NOT NULL,
@@ -1055,39 +928,41 @@ CREATE TABLE MembershipEntity (
     created_ts INTEGER NOT NULL
 );
 
--- Consultas
-
+-- Crear membresía
 membershipCreate:
 INSERT INTO MembershipEntity (name, months_paid, months_saved, active, created_ts)
 VALUES (?, ?, ?, ?, ?);
 
+-- Obtener membresías activas
 activeMemberships:
 SELECT * FROM MembershipEntity WHERE active = 1;
 
 CREATE TABLE InscriptionEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     price_cents INTEGER NOT NULL,
     active INTEGER NOT NULL DEFAULT 1,
     created_ts INTEGER NOT NULL
 );
 
--- Consultas
-
+-- Crear inscripción
 inscriptionCreate:
-INSERT INTO InscriptionEntity (price_cents, active, created_ts) VALUES (?, ?, ?);
+INSERT INTO InscriptionEntity (price_cents, active, created_ts)
+VALUES (?, ?, ?);
 
+-- Obtener inscripción activa más reciente
 activeInscription:
 SELECT * FROM InscriptionEntity WHERE active = 1
 ORDER BY created_ts DESC
 LIMIT 1;
 
+-- Desactivar inscripción
 deactivateInscription:
 UPDATE InscriptionEntity
 SET active = 0
 WHERE id = ?;
 
 CREATE TABLE PaymentEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     student_id INTEGER NOT NULL REFERENCES StudentEntity(id) ON DELETE CASCADE,
     amount_cents INTEGER NOT NULL,
     description TEXT NOT NULL,
@@ -1099,8 +974,7 @@ CREATE TABLE PaymentEntity (
     payment_method TEXT NOT NULL
 );
 
--- Consultas
-
+-- Registrar pago
 paymentCreate:
 INSERT INTO PaymentEntity (
     student_id, amount_cents, description, payment_ts,
@@ -1108,11 +982,12 @@ INSERT INTO PaymentEntity (
     payment_method
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
+-- Obtener pagos por alumno
 getPaymentsByStudentId:
 SELECT * FROM PaymentEntity WHERE student_id = ? ORDER BY payment_ts DESC;
 
 CREATE TABLE PromotionEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     start_ts INTEGER NOT NULL,
     end_ts INTEGER NOT NULL,
@@ -1141,7 +1016,6 @@ WHERE active = 1 AND start_ts <= ? AND end_ts >= ?;
 promotionDeactivate:
 UPDATE PromotionEntity SET active = 0 WHERE id = ?;
 
--- Vista para cumpleaños del mes actual por franquicia
 CREATE VIEW BirthdayThisMonthView AS
 SELECT
     s.id AS student_id,
@@ -1155,7 +1029,7 @@ FROM StudentEntity s
 WHERE strftime('%m', datetime(s.birth_date_ts / 1000, 'unixepoch')) = strftime('%m', 'now');
 
 CREATE TABLE EventEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
     event_ts INTEGER NOT NULL,
@@ -1176,14 +1050,14 @@ INSERT INTO EventEntity (
 selectGlobalEvents:
 SELECT * FROM EventEntity WHERE global = 1 AND active = 1 ORDER BY event_ts DESC;
 
--- Eventos por franquicia
+-- Eventos por franquicia (incluye globales)
 eventsByFranchise:
 SELECT * FROM EventEntity
 WHERE (global = 1 OR franchise_id = ?) AND active = 1
 ORDER BY event_ts DESC;
 
 CREATE TABLE ProductEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT,
     price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
@@ -1206,7 +1080,7 @@ productDeactivate:
 UPDATE ProductEntity SET active = 0 WHERE id = ?;
 
 CREATE TABLE ProductSaleEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     product_id INTEGER NOT NULL REFERENCES ProductEntity(id) ON DELETE RESTRICT,
     franchise_id INTEGER NOT NULL REFERENCES FranchiseEntity(id) ON DELETE CASCADE,
     student_id INTEGER REFERENCES StudentEntity(id) ON DELETE SET NULL,
@@ -1232,46 +1106,36 @@ SELECT * FROM ProductSaleEntity WHERE franchise_id = ? ORDER BY sale_ts DESC;
 salesByStudent:
 SELECT * FROM ProductSaleEntity WHERE student_id = ? ORDER BY sale_ts DESC;
 
--- Total de alumnos en el sistema
 globalStudentCount:
 SELECT COUNT(*) FROM StudentEntity WHERE active = 1;
 
--- Total de profesores en el sistema
 globalTeacherCount:
 SELECT COUNT(*) FROM TeacherEntity WHERE active = 1;
 
--- Total de franquicias activas
 globalFranchiseCount:
 SELECT COUNT(*) FROM FranchiseEntity WHERE active = 1;
 
--- Total de disciplinas activas
 globalDisciplineCount:
 SELECT COUNT(*) FROM DisciplineEntity;
 
--- Total de clases (horarios) en el sistema
 globalScheduleCount:
 SELECT COUNT(*) FROM ScheduleEntity;
 
--- Total de alumnos por franquicia
 studentCountByFranchise:
 SELECT COUNT(*) FROM StudentEntity WHERE franchise_id = ? AND active = 1;
 
--- Total de profesores asignados a una franquicia
 teacherCountByFranchise:
 SELECT COUNT(DISTINCT t.id)
 FROM TeacherEntity t
 JOIN UserRoleEntity ur ON ur.user_id = t.user_id
 WHERE ur.franchise_id = ?;
 
--- Total de disciplinas activas por franquicia
 disciplineCountByFranchise:
 SELECT COUNT(*) FROM FranchiseDisciplineEntity WHERE franchise_id = ?;
 
--- Total de clases programadas en una franquicia
 scheduleCountByFranchise:
 SELECT COUNT(*) FROM ScheduleEntity WHERE franchise_id = ?;
 
--- Cumpleaños del mes por franquicia
 birthdaysThisMonthByFranchise:
 SELECT * FROM StudentEntity
 WHERE franchise_id = ?
